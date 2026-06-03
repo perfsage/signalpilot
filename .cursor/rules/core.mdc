@@ -1,0 +1,37 @@
+---
+description: Core patterns and conventions for SignalPilot
+---
+
+# SignalPilot Core Conventions
+
+## Stack
+- Python 3.12, Pydantic v2 (model_copy, Field factories), GitPython
+- pytest with asyncio mode=AUTO; run via `/Users/aashu/.local/bin/python3.12 -m pytest`
+- Tests live in `tests/unit/`; 242+ tests must stay green
+
+## Project Layout
+- `src/signalpilot/` — main package
+- `src/signalpilot/collectors/` — data collectors (deploy, git, logs, metrics, etc.)
+- `src/signalpilot/models.py` — all Pydantic models (single source of truth)
+- `src/signalpilot/detect/` — regression/change-point detection
+- `src/signalpilot/rca/` — root-cause analysis
+
+## Key Models
+- `DeployChange.git: Optional[GitChange]` — populated by `enrich_deploy_change`
+- `GitChange` — repo, from_sha, to_sha, commits, suspect_commits, suspect_files
+- `CommitInfo` — sha (12-char hex), author, message, files_changed, ts
+
+## Git Collector (`collectors/git.py`)
+- `resolve_commit_sha(image_tag, annotations, labels)` — SHA from annotations > labels > tag
+- `diff_commits(repo_path, from_sha, to_sha)` — `None` from_sha → single HEAD commit
+- `flag_suspect_commits(commits)` — source/infra/config files OR risky message keywords
+- `build_git_change(...)` — full pipeline, degrades gracefully (returns None on error)
+- `enrich_deploy_change(deploy_change, repo_path, ...)` — attaches GitChange to DeployChange
+- Uses GitPython; clones remote URLs to tmpdir with depth=50
+
+## Conventions
+- Collectors degrade gracefully — return None / empty list, never raise to callers
+- `_commit_to_info`: sha[:12], files from parent diff, limit 100 files
+- SHA regex: `[0-9a-f]{7,40}` case-insensitive
+- Pydantic: always use `model_copy(update={...})` (v2 API)
+- No async in collectors/git.py — sync GitPython calls only

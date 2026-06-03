@@ -1,0 +1,39 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-dns
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-dns
+    scenario: dns-failure
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-dns
+  template:
+    metadata:
+      labels:
+        app: sp-test-dns
+        scenario: dns-failure
+    spec:
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "-c", "
+import socket, time, sys
+while True:
+    try:
+        socket.gethostbyname('this-service-does-not-exist.signalpilot-test.svc.cluster.local')
+    except socket.gaierror as e:
+        print(f'ERROR DNS lookup failed: {e}', file=sys.stderr, flush=True)
+    time.sleep(2)
+"]
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "50m"
+            memory: "64Mi"

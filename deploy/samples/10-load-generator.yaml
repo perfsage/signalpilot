@@ -1,0 +1,28 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sp-load-generator
+  namespace: signalpilot-test
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: loadgen
+        image: python:3.11-slim
+        command: ["python3", "-c", "
+import urllib.request, time
+for i in range(200):
+    try:
+        urllib.request.urlopen('http://sp-test-regression:8080/', timeout=5)
+    except Exception as e:
+        print(f'Request {i} failed: {e}')
+    time.sleep(0.1)
+print('Load generation complete')
+"]
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"

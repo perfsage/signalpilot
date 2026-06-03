@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-crash
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-crash
+    scenario: crashloop
+    app.kubernetes.io/version: "v1.0.0-crash"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-crash
+  template:
+    metadata:
+      labels:
+        app: sp-test-crash
+        scenario: crashloop
+    spec:
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "-c", "import os,sys; url=os.environ['REQUIRED_DB_URL']; print('Connected'); import time; time.sleep(3600)"]
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "100m"
+            memory: "64Mi"
+        # No REQUIRED_DB_URL env var → KeyError → crash → CrashLoopBackOff

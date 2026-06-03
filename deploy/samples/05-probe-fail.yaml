@@ -1,0 +1,41 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-probe
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-probe
+    scenario: probe-fail
+    app.kubernetes.io/version: "v1.0.0-probe"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-probe
+  template:
+    metadata:
+      labels:
+        app: sp-test-probe
+        scenario: probe-fail
+    spec:
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "-m", "http.server", "8080"]
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /healthz          # this path doesn't exist → 404 → probe fail
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "100m"
+            memory: "64Mi"

@@ -1,0 +1,30 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-unschedulable
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-unschedulable
+    scenario: unschedulable
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-unschedulable
+  template:
+    metadata:
+      labels:
+        app: sp-test-unschedulable
+        scenario: unschedulable
+    spec:
+      containers:
+      - name: app
+        image: nginx:alpine
+        resources:
+          requests:
+            cpu: "999"       # 999 cores → impossible to schedule
+            memory: "999Gi"  # 999GB → impossible
+          limits:
+            cpu: "1000"
+            memory: "1000Gi"

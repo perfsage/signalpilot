@@ -1,0 +1,58 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-regression
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-regression
+    scenario: regression
+    app.kubernetes.io/version: "v1.0.0"
+    git-commit: "abc1234def567890abc1234def567890abc1234d"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sp-test-regression
+  template:
+    metadata:
+      labels:
+        app: sp-test-regression
+        scenario: regression
+        app.kubernetes.io/version: "v1.0.0"
+        git-commit: "abc1234def567890abc1234def567890abc1234d"
+    spec:
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "-c", "
+import http.server, time
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'ok')
+    def log_message(self, *args): pass
+http.server.HTTPServer(('', 8080), H).serve_forever()
+"]
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "500m"
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sp-test-regression
+  namespace: signalpilot-test
+spec:
+  selector:
+    app: sp-test-regression
+  ports:
+  - port: 8080
+    targetPort: 8080

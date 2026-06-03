@@ -1,0 +1,27 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-imagepull
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-imagepull
+    scenario: imagepull
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-imagepull
+  template:
+    metadata:
+      labels:
+        app: sp-test-imagepull
+        scenario: imagepull
+    spec:
+      containers:
+      - name: app
+        image: nginx:thisimagedoesnotexist99999
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"

@@ -1,0 +1,32 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-cpu
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-cpu
+    scenario: cpu-throttle
+    app.kubernetes.io/version: "v1.0.0-cpu"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-cpu
+  template:
+    metadata:
+      labels:
+        app: sp-test-cpu
+        scenario: cpu-throttle
+    spec:
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "-c", "import time; [sum(range(1000000)) for _ in iter(int, 1)]"]
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "20m"   # Very low CPU limit → heavy throttling
+            memory: "64Mi"

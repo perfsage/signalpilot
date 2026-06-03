@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-oom
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-oom
+    scenario: oom
+    app.kubernetes.io/version: "v1.0.0-oom"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-oom
+  template:
+    metadata:
+      labels:
+        app: sp-test-oom
+        scenario: oom
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "-c", "import time; data=[]; [data.extend([b'x'*1024*1024]) for _ in range(300)]; time.sleep(3600)"]
+        resources:
+          requests:
+            memory: "16Mi"
+            cpu: "10m"
+          limits:
+            memory: "32Mi"   # very low limit → OOM
+            cpu: "100m"

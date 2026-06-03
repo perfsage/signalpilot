@@ -1,52 +1,37 @@
-# SignalPilot RBAC – grants read access to the resources SignalPilot needs.
-# Apply with: kubectl apply -f deploy/signalpilot-rbac.yaml
-#
-# TODO (full impl): scope to specific namespaces, add ServiceAccount binding.
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: signalpilot
-  namespace: signalpilot
+  namespace: signalpilot-test
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: signalpilot-reader
 rules:
-  - apiGroups: [""]
-    resources:
-      - pods
-      - pods/log
-      - events
-      - services
-      - endpoints
-      - configmaps
-      - namespaces
-      - nodes
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["apps"]
-    resources:
-      - deployments
-      - replicasets
-      - statefulsets
-      - daemonsets
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["metrics.k8s.io"]
-    resources:
-      - pods
-      - nodes
-    verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "pods/status", "events", "nodes", "services", "endpoints", "namespaces", "replicationcontrollers", "configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+- apiGroups: ["gadget.kinvolk.io"]
+  resources: ["traces"]
+  verbs: ["get", "list", "create", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: signalpilot-reader-binding
-subjects:
-  - kind: ServiceAccount
-    name: signalpilot
-    namespace: signalpilot
+  name: signalpilot-reader
 roleRef:
+  apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: signalpilot-reader
-  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: signalpilot
+  namespace: signalpilot-test

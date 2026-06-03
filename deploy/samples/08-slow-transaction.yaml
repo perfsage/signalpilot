@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-slow
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-slow
+    scenario: slow-transaction
+    app.kubernetes.io/version: "v2.0.0-slow"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-slow
+  template:
+    metadata:
+      labels:
+        app: sp-test-slow
+        scenario: slow-transaction
+    spec:
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "-c", "
+import http.server, time
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        time.sleep(3)  # 3 second artificial delay
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'slow response')
+    def log_message(self, *args): pass
+http.server.HTTPServer(('', 8080), H).serve_forever()
+"]
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "100m"
+            memory: "64Mi"

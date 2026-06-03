@@ -35,3 +35,14 @@ description: Core patterns and conventions for SignalPilot
 - SHA regex: `[0-9a-f]{7,40}` case-insensitive
 - Pydantic: always use `model_copy(update={...})` (v2 API)
 - No async in collectors/git.py — sync GitPython calls only
+- `Analysis.deploy_change` is `Optional[DeployChange]` with NO default — always pass `deploy_change=None` explicitly in tests
+- Use `datetime.now(timezone.utc)` not `datetime.utcnow()` (deprecated in 3.12)
+
+## Output Layer Modules
+- `narrate/template.py`: `generate_narrative(analysis)` — deterministic 3-5 para summary
+- `narrate/llm.py`: `polish_narrative(analysis)` — optional LLM polish, falls back to template
+- `report/html.py`: `generate_html_report(analysis, output_path=None)` — Jinja2 self-contained HTML
+- `report/templates/report.html.j2`: dark-mode report template (no external deps)
+- `integrations/slack.py`: `send_slack_alert(analysis, webhook_url, report_url="")` — httpx POST
+- `integrations/gate.py`: `gate_check(analysis, threshold)`, `generate_junit_xml`, `generate_markdown_summary`
+- `collectors/prometheus.py`: `PrometheusCollector` — auto-discovers Prometheus, collects CPU/mem/error/latency signals

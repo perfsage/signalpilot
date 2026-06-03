@@ -44,6 +44,10 @@ class CollectorRegistry:
             except Exception:
                 pass
 
+    def available_collector_names(self) -> list[str]:
+        """Return names of registered collectors that report as available."""
+        return [c.name for c in self._collectors if c.is_available()]
+
     def collect_all(
         self,
         namespace: str,

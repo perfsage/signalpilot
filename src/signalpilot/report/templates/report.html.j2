@@ -1,45 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SignalPilot RCA Report – {{ analysis.namespace }}</title>
-  <style>
-    /* Minimal placeholder styles – full design TBD */
-    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
-    h1 { color: #1a1a2e; }
-    .finding { border-left: 4px solid #e63946; padding: 1rem; margin: 1rem 0; background: #fff8f8; }
-    .finding.high { border-color: #f4a261; }
-    .finding.medium { border-color: #e9c46a; }
-    .finding.low { border-color: #2a9d8f; }
-    pre { background: #f1f3f5; padding: 0.75rem; border-radius: 4px; overflow-x: auto; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SignalPilot RCA Report – {{ analysis.namespace }}</title>
+<style>
+:root {
+  --bg: #0f172a; --surface: #1e293b; --border: #334155;
+  --text: #f1f5f9; --muted: #94a3b8;
+  --critical: #dc2626; --high: #ea580c; --medium: #d97706; --low: #16a34a; --info: #2563eb;
+  --code-bg: #0f172a; --code-text: #a5f3fc;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; line-height:1.6; }
+.header { background:linear-gradient(135deg,#1e3a5f,#0f172a); padding:2rem; border-bottom:1px solid var(--border); }
+.header h1 { font-size:1.8rem; font-weight:700; color:#38bdf8; }
+.header .meta { color:var(--muted); font-size:0.9rem; margin-top:0.5rem; }
+.container { max-width:1100px; margin:0 auto; padding:2rem; }
+.narrative { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem; margin-bottom:2rem; }
+.narrative p { margin-bottom:0.8rem; color:var(--text); }
+.findings-header { font-size:1.2rem; font-weight:600; margin-bottom:1rem; color:#38bdf8; }
+.finding-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:1.5rem; overflow:hidden; }
+.finding-header { display:flex; align-items:center; gap:1rem; padding:1rem 1.5rem; cursor:pointer; }
+.badge { padding:0.2rem 0.7rem; border-radius:999px; font-size:0.75rem; font-weight:700; text-transform:uppercase; }
+.badge-critical { background:#dc2626; color:white; }
+.badge-high { background:#ea580c; color:white; }
+.badge-medium { background:#d97706; color:white; }
+.badge-low { background:#16a34a; color:white; }
+.badge-info { background:#2563eb; color:white; }
+.finding-title { font-size:1rem; font-weight:600; flex:1; }
+.finding-meta { font-size:0.8rem; color:var(--muted); }
+.finding-body { padding:0 1.5rem 1.5rem; display:none; }
+.finding-body.open { display:block; }
+.explanation { color:var(--text); margin-bottom:1rem; line-height:1.7; }
+.fixes h4 { font-size:0.9rem; color:#38bdf8; margin-bottom:0.8rem; font-weight:600; }
+.fix { background:var(--code-bg); border:1px solid var(--border); border-radius:6px; padding:1rem; margin-bottom:0.8rem; }
+.fix .fix-desc { font-size:0.9rem; margin-bottom:0.5rem; color:var(--text); }
+.fix code { font-family:'Fira Mono','Cascadia Code',monospace; font-size:0.85rem; color:var(--code-text); display:block; white-space:pre-wrap; margin-top:0.5rem; }
+.copy-btn { font-size:0.7rem; color:var(--muted); background:none; border:1px solid var(--border); border-radius:4px; padding:0.2rem 0.5rem; cursor:pointer; float:right; margin-top:0.3rem; }
+.copy-btn:hover { color:var(--text); }
+.evidence h4 { font-size:0.9rem; color:#38bdf8; margin:1rem 0 0.5rem; font-weight:600; }
+.ev-item { background:#0a1628; border-radius:4px; padding:0.5rem 0.8rem; margin-bottom:0.4rem; font-size:0.8rem; color:var(--muted); font-family:monospace; }
+.summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:1rem; margin-bottom:2rem; }
+.summary-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1rem; text-align:center; }
+.summary-card .num { font-size:2rem; font-weight:700; }
+.summary-card .label { font-size:0.8rem; color:var(--muted); text-transform:uppercase; }
+.deploy-info { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem; margin-bottom:2rem; }
+.deploy-info h3 { font-size:1rem; color:#38bdf8; margin-bottom:1rem; }
+.diff-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.diff-table td, .diff-table th { padding:0.4rem 0.8rem; border-bottom:1px solid var(--border); text-align:left; }
+.diff-table th { color:var(--muted); font-weight:500; }
+.diff-old { color:#f87171; }
+.diff-new { color:#86efac; }
+.no-findings { text-align:center; padding:3rem; color:var(--muted); font-size:1.1rem; }
+</style>
 </head>
 <body>
-  <h1>SignalPilot RCA Report</h1>
-  <p><strong>Namespace:</strong> {{ analysis.namespace }}</p>
-  <p><strong>Analysis time:</strong> {{ analysis.ts }}</p>
-  <p><strong>Sources used:</strong> {{ analysis.sources_used | join(", ") }}</p>
+<div class="header">
+  <h1>&#9889; SignalPilot RCA Report</h1>
+  <div class="meta">
+    Namespace: <strong>{{ analysis.namespace }}</strong> |
+    Generated: {{ generated_at }} |
+    Analysis ID: {{ analysis.id }}
+    {% if analysis.duration_s %} | Duration: {{ "%.1f"|format(analysis.duration_s) }}s{% endif %}
+  </div>
+</div>
 
-  <h2>Summary</h2>
-  <p>{{ analysis.narrative }}</p>
+<div class="container">
+  <!-- Summary grid -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="num" style="color:#dc2626">{{ analysis.findings | selectattr('severity', 'equalto', 'critical') | list | length }}</div>
+      <div class="label">Critical</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#ea580c">{{ analysis.findings | selectattr('severity', 'equalto', 'high') | list | length }}</div>
+      <div class="label">High</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#d97706">{{ analysis.findings | selectattr('severity', 'equalto', 'medium') | list | length }}</div>
+      <div class="label">Medium</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#38bdf8">{{ analysis.findings | length }}</div>
+      <div class="label">Total Findings</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#a78bfa">{{ analysis.sources_used | length }}</div>
+      <div class="label">Sources</div>
+    </div>
+  </div>
 
-  <h2>Findings ({{ analysis.findings | length }})</h2>
-  {% for finding in analysis.findings %}
-  <div class="finding {{ finding.severity.value }}">
-    <h3>[{{ finding.severity.value | upper }}] {{ finding.title }}</h3>
-    <p>Confidence: {{ "%.0f" | format(finding.confidence * 100) }}% | Blast radius: {{ "%.0f" | format(finding.blast_radius * 100) }}%</p>
-    <p>{{ finding.explanation }}</p>
-    {% if finding.fixes %}
-    <h4>Recommended fixes</h4>
-    {% for fix in finding.fixes %}
-    <p><strong>{{ fix.description }}</strong></p>
-    {% if fix.kubectl_snippet %}
-    <pre>{{ fix.kubectl_snippet }}</pre>
-    {% endif %}
+  <!-- Narrative -->
+  {% if analysis.narrative %}
+  <div class="narrative">
+    {% for para in analysis.narrative.split('\n\n') %}
+    <p>{{ para }}</p>
     {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Deploy change -->
+  {% if deploy_change %}
+  <div class="deploy-info">
+    <h3>&#128640; Deployment Change</h3>
+    <table class="diff-table">
+      <tr><th>Field</th><th>Before</th><th>After</th></tr>
+      <tr><td>Deployment</td><td colspan="2"><strong>{{ deploy_change.deployment }}</strong> / rev {{ deploy_change.from_revision or '?' }} &#8594; {{ deploy_change.to_revision }}</td></tr>
+      {% for d in deploy_change.image_diffs %}
+      <tr>
+        <td>Image</td>
+        <td class="diff-old">{{ d.from_image or 'none' }}</td>
+        <td class="diff-new">{{ d.to_image }}</td>
+      </tr>
+      {% endfor %}
+      {% for k, v in deploy_change.env_diff.items() %}
+      <tr>
+        <td>Env: {{ k }}</td>
+        <td class="diff-old">{{ v[0] or 'none' }}</td>
+        <td class="diff-new">{{ v[1] or 'removed' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% if deploy_change.git and deploy_change.git.suspect_commits %}
+    <div style="margin-top:1rem">
+      <strong style="color:#fbbf24">&#9888; Suspect commits:</strong>
+      {% for c in deploy_change.git.suspect_commits %}
+      <div class="ev-item">{{ c.sha[:8] }} by {{ c.author }}: {{ c.message[:100] }}</div>
+      {% endfor %}
+    </div>
     {% endif %}
   </div>
+  {% endif %}
+
+  <!-- Findings -->
+  <div class="findings-header">&#128269; Findings ({{ findings | length }})</div>
+
+  {% if not findings %}
+  <div class="no-findings">&#10003; No significant issues detected &#8212; deployment appears healthy.</div>
+  {% else %}
+  {% for finding in findings %}
+  <div class="finding-card">
+    <div class="finding-header" onclick="toggle(this)">
+      <span class="badge badge-{{ finding.severity.value }}">{{ finding.severity.value }}</span>
+      <span class="finding-title">{{ finding.title }}</span>
+      <span class="finding-meta">
+        conf {{ (finding.confidence * 100) | int }}% |
+        blast {{ (finding.blast_radius * 100) | int }}% |
+        {{ finding.target.kind }}/{{ finding.target.name }}
+        {% if finding.target.container %}/{{ finding.target.container }}{% endif %}
+      </span>
+    </div>
+    <div class="finding-body{% if loop.first %} open{% endif %}">
+      <div class="explanation">{{ finding.explanation }}</div>
+
+      {% if finding.fixes %}
+      <div class="fixes">
+        <h4>&#128295; Recommended Fixes</h4>
+        {% for fix in finding.fixes %}
+        <div class="fix">
+          <div class="fix-desc"><strong>{{ loop.index }}.</strong> {{ fix.description }}
+            {% if fix.current_value %} (current: <span style="color:#f87171">{{ fix.current_value }}</span> &#8594; proposed: <span style="color:#86efac">{{ fix.proposed_value or '?' }}</span>){% endif %}
+          </div>
+          {% if fix.kubectl_snippet %}
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <code>{{ fix.kubectl_snippet }}</code>
+          {% endif %}
+          {% if fix.yaml_snippet %}
+          <code>{{ fix.yaml_snippet }}</code>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if finding.evidence %}
+      <div class="evidence">
+        <h4>&#128202; Evidence ({{ finding.evidence | length }} source(s))</h4>
+        {% for ev in finding.evidence %}
+        <div class="ev-item">
+          {% if ev.type == 'signal' %}
+            [{{ ev.source }}] {{ ev.kind }} | {{ ev.target.name }}{% if ev.target.container %}/{{ ev.target.container }}{% endif %} | {{ ev.message[:120] }}
+          {% elif ev.type == 'log_cluster' %}
+            [log] NEW template: &#34;{{ ev.template[:100] }}&#34; | before:{{ ev.count_before }} after:{{ ev.count_after }}
+          {% elif ev.type == 'git_change' %}
+            [git] {{ ev.from_sha[:8] if ev.from_sha else '?' }} &#8594; {{ ev.to_sha[:8] }} | {{ ev.commits | length }} commit(s)
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
   {% endfor %}
+  {% endif %}
+</div>
+
+<script>
+function toggle(header) {
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+function copyCode(btn) {
+  const code = btn.nextElementSibling || btn.parentElement.querySelector('code');
+  if (code) navigator.clipboard.writeText(code.textContent).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 2000);
+  });
+}
+</script>
 </body>
 </html>

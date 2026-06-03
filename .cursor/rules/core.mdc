@@ -1,48 +1,45 @@
 ---
-description: Core patterns and conventions for SignalPilot
+description: SignalPilot project conventions and patterns
+globs:
+  - "src/signalpilot/**"
+  - "tests/**"
 ---
 
-# SignalPilot Core Conventions
+# SignalPilot Core Rules
 
-## Stack
-- Python 3.12, Pydantic v2 (model_copy, Field factories), GitPython
-- pytest with asyncio mode=AUTO; run via `/Users/aashu/.local/bin/python3.12 -m pytest`
-- Tests live in `tests/unit/`; 242+ tests must stay green
+## Architecture
+- All data models are in `src/signalpilot/models.py` (pydantic v2)
+- `Evidence = Annotated[Union[Signal, LogCluster, GitChange], Field(discriminator="type")]` — always use discriminated union
+- Collectors are in `src/signalpilot/collectors/` — all implement `BaseCollector` with `is_available()` + `collect()`
+- RCA rules are pure functions in `rca/rules.py` with signature `rule_fn(ctx: RcaContext) -> list[Finding]`
+- The engine in `rca/engine.py` wraps every rule in try/except — rules must never crash the engine
+- `get_settings()` is `@lru_cache(maxsize=1)` — call `.cache_clear()` in tests using `monkeypatch.setenv`
 
-## Project Layout
-- `src/signalpilot/` — main package
-- `src/signalpilot/collectors/` — data collectors (deploy, git, logs, metrics, etc.)
-- `src/signalpilot/models.py` — all Pydantic models (single source of truth)
-- `src/signalpilot/detect/` — regression/change-point detection
-- `src/signalpilot/rca/` — root-cause analysis
+## Python conventions
+- Python 3.12+, strict typing everywhere
+- Pydantic v2: use `model_copy(update={...})` not `.copy()`
+- Use `from __future__ import annotations` for forward refs
+- `Signal.type = "signal"` (discriminator), never omit
+- All collectors handle exceptions gracefully and return `[]` on failure
+- `redact_secrets()` must be applied to all log text before storage
 
-## Key Models
-- `DeployChange.git: Optional[GitChange]` — populated by `enrich_deploy_change`
-- `GitChange` — repo, from_sha, to_sha, commits, suspect_commits, suspect_files
-- `CommitInfo` — sha (12-char hex), author, message, files_changed, ts
+## Testing
+- Unit tests use JSON fixtures in `tests/fixtures/k8s/` — no live cluster
+- E2E tests in `tests/e2e/` skip automatically if no cluster available
+- Signal fixtures always include `type="signal"` field
+- Use `freezegun` for time-sensitive tests
 
-## Git Collector (`collectors/git.py`)
-- `resolve_commit_sha(image_tag, annotations, labels)` — SHA from annotations > labels > tag
-- `diff_commits(repo_path, from_sha, to_sha)` — `None` from_sha → single HEAD commit
-- `flag_suspect_commits(commits)` — source/infra/config files OR risky message keywords
-- `build_git_change(...)` — full pipeline, degrades gracefully (returns None on error)
-- `enrich_deploy_change(deploy_change, repo_path, ...)` — attaches GitChange to DeployChange
-- Uses GitPython; clones remote URLs to tmpdir with depth=50
+## K8s compatibility
+- Target K3s v1.22+ (rancher-desktop)
+- Use `core/v1` events API (not `events.k8s.io/v1`)
+- Crashloop detection: check BOTH `state.waiting.reason == "CrashLoopBackOff"` AND `restart_count >= 3` with `last_state.terminated.reason != OOMKilled` (pod briefly re-runs between crashes)
+- Metrics-server: use `CustomObjectsApi` for `apis/metrics.k8s.io/v1beta1`
 
-## Conventions
-- Collectors degrade gracefully — return None / empty list, never raise to callers
-- `_commit_to_info`: sha[:12], files from parent diff, limit 100 files
-- SHA regex: `[0-9a-f]{7,40}` case-insensitive
-- Pydantic: always use `model_copy(update={...})` (v2 API)
-- No async in collectors/git.py — sync GitPython calls only
-- `Analysis.deploy_change` is `Optional[DeployChange]` with NO default — always pass `deploy_change=None` explicitly in tests
-- Use `datetime.now(timezone.utc)` not `datetime.utcnow()` (deprecated in 3.12)
-
-## Output Layer Modules
-- `narrate/template.py`: `generate_narrative(analysis)` — deterministic 3-5 para summary
-- `narrate/llm.py`: `polish_narrative(analysis)` — optional LLM polish, falls back to template
-- `report/html.py`: `generate_html_report(analysis, output_path=None)` — Jinja2 self-contained HTML
-- `report/templates/report.html.j2`: dark-mode report template (no external deps)
-- `integrations/slack.py`: `send_slack_alert(analysis, webhook_url, report_url="")` — httpx POST
-- `integrations/gate.py`: `gate_check(analysis, threshold)`, `generate_junit_xml`, `generate_markdown_summary`
-- `collectors/prometheus.py`: `PrometheusCollector` — auto-discovers Prometheus, collects CPU/mem/error/latency signals
+## File structure
+- `src/signalpilot/` — source package (src layout)
+- `tests/unit/` — fast fixture-based unit tests
+- `tests/e2e/` — live cluster E2E tests
+- `tests/fixtures/k8s/` — recorded K8s API JSON responses
+- `deploy/samples/` — scenario manifests for `signalpilot-test` namespace
+- `scripts/` — setup_test.sh, run_e2e.sh
+- `.signalpilot/` — runtime data dir (analyses, timelines, verifications)

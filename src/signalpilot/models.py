@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal, Optional, Union
+from typing import Annotated, Any, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -70,6 +70,7 @@ class Target(BaseModel):
 class Signal(BaseModel):
     """A single observable event or metric data point from a collector."""
 
+    type: Literal["signal"] = "signal"
     ts: datetime
     source: SignalSource
     kind: SignalKind
@@ -117,6 +118,7 @@ class CommitInfo(BaseModel):
 class GitChange(BaseModel):
     """Git diff between two deployment revisions, including suspect commits."""
 
+    type: Literal["git_change"] = "git_change"
     repo: str
     from_sha: Optional[str]
     to_sha: str
@@ -144,6 +146,7 @@ class DeployChange(BaseModel):
 class LogCluster(BaseModel):
     """A drain3-derived log template cluster comparing before/after deploy."""
 
+    type: Literal["log_cluster"] = "log_cluster"
     fingerprint: str
     template: str
     count_before: int
@@ -157,7 +160,7 @@ class Fix(BaseModel):
     """A concrete, actionable remediation for a finding."""
 
     description: str
-    kind: Literal["patch", "scale", "config", "code", "network", "info"]
+    kind: Literal["patch", "rollback", "scale", "config", "code", "network", "info"]
     kubectl_snippet: Optional[str] = None
     yaml_snippet: Optional[str] = None
     expected_improvement: Optional[str] = None
@@ -165,13 +168,16 @@ class Fix(BaseModel):
     proposed_value: Optional[str] = None
 
 
-Evidence = Union[Signal, LogCluster, GitChange]
+Evidence = Annotated[
+    Union[Signal, LogCluster, GitChange],
+    Field(discriminator="type"),
+]
 
 
 class Finding(BaseModel):
     """A ranked root-cause finding produced by the RCA engine."""
 
-    id: str
+    id: str = Field(min_length=1)
     title: str
     severity: Severity
     confidence: float = Field(ge=0.0, le=1.0)
@@ -222,7 +228,7 @@ class RegressionWindow(BaseModel):
 class Analysis(BaseModel):
     """Top-level RCA analysis result combining all signal sources and findings."""
 
-    id: str
+    id: str = Field(min_length=1)
     ts: datetime
     namespace: str
     deploy_change: Optional[DeployChange]

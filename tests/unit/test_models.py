@@ -241,6 +241,22 @@ class TestDeployChange:
         )
         assert DeployChange.model_validate(dc.model_dump()) == dc
 
+    def test_json_round_trip_with_complex_fields(self) -> None:
+        dc = DeployChange(
+            deployment="api",
+            namespace="prod",
+            from_revision="1",
+            to_revision="2",
+            deploy_time=NOW,
+            env_diff={"PORT": ("8080", "9090"), "DEBUG": ("true", None)},
+            replica_diff=(2, 4),
+        )
+        json_str = dc.model_dump_json()
+        restored = DeployChange.model_validate_json(json_str)
+        assert restored == dc
+        assert restored.env_diff["PORT"] == ("8080", "9090")
+        assert restored.replica_diff == (2, 4)
+
 
 # ---------------------------------------------------------------------------
 # Fix
@@ -248,7 +264,7 @@ class TestDeployChange:
 
 class TestFix:
     def test_valid_kinds(self) -> None:
-        for kind in ("patch", "scale", "config", "code", "network", "info"):
+        for kind in ("patch", "rollback", "scale", "config", "code", "network", "info"):
             fix = Fix(description="do something", kind=kind)  # type: ignore[arg-type]
             assert fix.kind == kind
 

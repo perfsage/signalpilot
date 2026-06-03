@@ -6,10 +6,13 @@ All settings are overridable via environment variables prefixed with
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from signalpilot.models import Severity
 
 
 class Settings(BaseSettings):
@@ -61,7 +64,7 @@ class Settings(BaseSettings):
     slack_webhook_url: Optional[str] = Field(default=None, exclude=True)
 
     # CI gate
-    gate_severity_threshold: str = "high"
+    gate_severity_threshold: Severity = Severity.HIGH
 
     # Local storage directory for Parquet snapshots
     data_dir: str = ".signalpilot"
@@ -71,6 +74,7 @@ class Settings(BaseSettings):
     tcpdump_capture_s: int = 15
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return a fully resolved Settings instance (reads env + .env file)."""
     return Settings()

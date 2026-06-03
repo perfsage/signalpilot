@@ -150,6 +150,29 @@ class KubeApiCollector(BaseCollector):
                         )
                     )
 
+                # Compute waiting state early (used in crash-loop heuristics below)
+                _state_early = getattr(cs, "state", None)
+                _waiting_early = getattr(_state_early, "waiting", None) if _state_early else None
+                _waiting_reason_early = getattr(_waiting_early, "reason", "") if _waiting_early else ""
+
+                # CrashLoop via restart history (catches brief Running phase between crashes)
+                # If restart_count >= 3 and last termination was Error (not OOM), it's a crashloop
+                if restart_count >= 3:
+                    last_state_chk = getattr(cs, "last_state", None)
+                    last_term_chk = getattr(last_state_chk, "terminated", None) if last_state_chk else None
+                    last_reason = getattr(last_term_chk, "reason", "") if last_term_chk else ""
+                    # Only emit CRASH_LOOP here if waiting state didn't already emit it
+                    if _waiting_reason_early != "CrashLoopBackOff" and last_reason not in ("OOMKilled", "Completed"):
+                        signals.append(Signal(
+                            ts=pod_ts,
+                            source=SignalSource.KUBE_API,
+                            kind=SignalKind.CRASH_LOOP,
+                            severity=Severity.CRITICAL,
+                            target=ct,
+                            value=float(restart_count),
+                            message=f"Container {cs.name} crash-looping ({restart_count} restarts, last exit: {last_reason or 'Error'})",
+                        ))
+
                 # OOMKilled from last termination
                 last_state = getattr(cs, "last_state", None)
                 last_term = (

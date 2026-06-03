@@ -1,0 +1,49 @@
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "frontend-8d4f5b9c7-rs2wq",
+        "namespace": "default",
+        "creation_timestamp": "2024-06-01T12:30:00Z",
+        "labels": {"app": "frontend"}
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "frontend",
+            "image": "private.registry.io/frontend:v3.0.0-nonexistent",
+            "resources": {
+              "limits": {"cpu": "200m", "memory": "128Mi"},
+              "requests": {"cpu": "100m", "memory": "64Mi"}
+            },
+            "env": []
+          }
+        ]
+      },
+      "status": {
+        "phase": "Pending",
+        "conditions": [
+          {"type": "ContainersReady", "status": "False", "reason": "ContainersNotReady"},
+          {"type": "Initialized", "status": "True", "reason": null}
+        ],
+        "container_statuses": [
+          {
+            "name": "frontend",
+            "restart_count": 0,
+            "state": {
+              "running": null,
+              "waiting": {
+                "reason": "ImagePullBackOff",
+                "message": "Back-off pulling image \"private.registry.io/frontend:v3.0.0-nonexistent\""
+              },
+              "terminated": null
+            },
+            "last_state": {
+              "terminated": null
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

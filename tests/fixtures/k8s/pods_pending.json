@@ -1,0 +1,37 @@
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "heavy-job-7f9c8d6b5-vk8lm",
+        "namespace": "default",
+        "creation_timestamp": "2024-06-01T13:00:00Z",
+        "labels": {"app": "heavy-job"}
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "heavy-job",
+            "image": "myrepo/heavy-job:v1.0.0",
+            "resources": {
+              "limits": {"cpu": "8", "memory": "16Gi"},
+              "requests": {"cpu": "8", "memory": "16Gi"}
+            },
+            "env": []
+          }
+        ]
+      },
+      "status": {
+        "phase": "Pending",
+        "conditions": [
+          {
+            "type": "PodScheduled",
+            "status": "False",
+            "reason": "Unschedulable",
+            "message": "0/3 nodes are available: 3 Insufficient cpu."
+          }
+        ],
+        "container_statuses": []
+      }
+    }
+  ]
+}

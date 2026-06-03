@@ -1,0 +1,58 @@
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "api-server.event-failed-scheduling-001",
+        "namespace": "default"
+      },
+      "involved_object": {
+        "kind": "Pod",
+        "name": "api-server-7d9d4b8b5c-zzzzz",
+        "namespace": "default"
+      },
+      "reason": "FailedScheduling",
+      "message": "0/3 nodes are available: 3 Insufficient memory.",
+      "type": "Warning",
+      "count": 12,
+      "first_timestamp": "2024-06-01T11:00:00Z",
+      "last_timestamp": "2024-06-01T11:30:00Z",
+      "event_time": null
+    },
+    {
+      "metadata": {
+        "name": "api-server.event-backoff-002",
+        "namespace": "default"
+      },
+      "involved_object": {
+        "kind": "Pod",
+        "name": "api-server-7d9d4b8b5c-abc12",
+        "namespace": "default"
+      },
+      "reason": "BackOff",
+      "message": "Back-off restarting failed container worker in pod api-server-7d9d4b8b5c-abc12_default",
+      "type": "Warning",
+      "count": 8,
+      "first_timestamp": "2024-06-01T11:10:00Z",
+      "last_timestamp": "2024-06-01T11:35:00Z",
+      "event_time": null
+    },
+    {
+      "metadata": {
+        "name": "api-server.event-unhealthy-003",
+        "namespace": "default"
+      },
+      "involved_object": {
+        "kind": "Pod",
+        "name": "api-server-7d9d4b8b5c-def34",
+        "namespace": "default"
+      },
+      "reason": "Unhealthy",
+      "message": "Readiness probe failed: HTTP probe failed with statuscode: 503",
+      "type": "Warning",
+      "count": 3,
+      "first_timestamp": "2024-06-01T11:20:00Z",
+      "last_timestamp": "2024-06-01T11:40:00Z",
+      "event_time": null
+    }
+  ]
+}

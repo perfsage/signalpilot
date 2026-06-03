@@ -1,0 +1,46 @@
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "worker-6bdf9f7b4-xvp7k",
+        "namespace": "default",
+        "creation_timestamp": "2024-06-01T11:00:00Z",
+        "labels": {"app": "worker"}
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "worker",
+            "image": "myrepo/worker:v2.0.0",
+            "resources": {
+              "limits": {"cpu": "200m", "memory": "256Mi"},
+              "requests": {"cpu": "100m", "memory": "128Mi"}
+            },
+            "env": []
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          {"type": "ContainersReady", "status": "False", "reason": "ContainersNotReady"},
+          {"type": "Ready", "status": "False", "reason": "ContainersNotReady"}
+        ],
+        "container_statuses": [
+          {
+            "name": "worker",
+            "restart_count": 5,
+            "state": {
+              "running": null,
+              "waiting": {"reason": "CrashLoopBackOff", "message": "back-off 5m0s restarting failed container"},
+              "terminated": null
+            },
+            "last_state": {
+              "terminated": {"reason": "Error", "exit_code": 1, "finished_at": "2024-06-01T11:04:00Z"}
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

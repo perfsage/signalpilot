@@ -1,38 +1,38 @@
-"""Abstract base class for all signal collectors.
-
-Every collector must implement ``collect()`` and declare which
-``SignalSource`` it represents.  The base class handles lifecycle hooks
-(startup/teardown) and optional caching.
-"""
+"""Abstract base class for all signal collectors."""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from typing import Optional
 
-from signalpilot.models import Signal, SignalSource
+from signalpilot.models import Signal
 
 
 class BaseCollector(ABC):
-    """Abstract collector.  Subclass and implement ``collect()``."""
+    """Abstract base for all SignalPilot collectors."""
 
-    source: SignalSource
-
-    async def startup(self) -> None:
-        """Optional async initialisation (load kubeconfig, open connections)."""
-
-    async def teardown(self) -> None:
-        """Optional async cleanup."""
+    name: str = ""
 
     @abstractmethod
-    async def collect(self, start: datetime, end: datetime) -> list[Signal]:
-        """Collect and return signals for the given UTC time window.
+    def is_available(self) -> bool:
+        """Return True if this collector's data source is reachable."""
+        ...
+
+    @abstractmethod
+    def collect(
+        self,
+        namespace: str,
+        deployment: Optional[str] = None,
+        since_ts: Optional[float] = None,
+    ) -> list[Signal]:
+        """Collect and return normalized Signals from this source.
 
         Args:
-            start: Inclusive window start (UTC).
-            end: Exclusive window end (UTC).
+            namespace: Kubernetes namespace to query.
+            deployment: Optional deployment name to scope the query.
+            since_ts: Unix timestamp lower bound; only signals after this time.
 
         Returns:
-            Unsorted list of Signal objects observed in the window.
+            List of Signal objects from this source.
         """
-        raise NotImplementedError
+        ...

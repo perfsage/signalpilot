@@ -1,0 +1,41 @@
+{
+  "kind": "PodMetricsList",
+  "apiVersion": "metrics.k8s.io/v1beta1",
+  "metadata": {},
+  "items": [
+    {
+      "metadata": {
+        "name": "api-server-7d9d4b8b5c-abc12",
+        "namespace": "default"
+      },
+      "timestamp": "2024-06-01T12:00:00Z",
+      "window": "15s",
+      "containers": [
+        {
+          "name": "api-server",
+          "usage": {
+            "cpu": "320m",
+            "memory": "210Mi"
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "name": "api-server-7d9d4b8b5c-def34",
+        "namespace": "default"
+      },
+      "timestamp": "2024-06-01T12:00:00Z",
+      "window": "15s",
+      "containers": [
+        {
+          "name": "api-server",
+          "usage": {
+            "cpu": "450m",
+            "memory": "430Mi"
+          }
+        }
+      ]
+    }
+  ]
+}

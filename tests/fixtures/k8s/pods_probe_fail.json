@@ -1,0 +1,57 @@
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "backend-6c8b7d5f4-pq3rt",
+        "namespace": "default",
+        "creation_timestamp": "2024-06-01T08:00:00Z",
+        "labels": {"app": "backend"}
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "backend",
+            "image": "myrepo/backend:v1.5.0",
+            "resources": {
+              "limits": {"cpu": "500m", "memory": "512Mi"},
+              "requests": {"cpu": "200m", "memory": "256Mi"}
+            },
+            "env": [],
+            "readiness_probe": {
+              "http_get": {"path": "/healthz", "port": 8080},
+              "initial_delay_seconds": 5,
+              "period_seconds": 10
+            }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          {
+            "type": "ContainersReady",
+            "status": "False",
+            "reason": "ContainersNotReady",
+            "message": "containers with unready status: [backend]"
+          },
+          {"type": "Ready", "status": "False", "reason": "ContainersNotReady"}
+        ],
+        "container_statuses": [
+          {
+            "name": "backend",
+            "restart_count": 0,
+            "ready": false,
+            "state": {
+              "running": {"started_at": "2024-06-01T08:00:00Z"},
+              "waiting": null,
+              "terminated": null
+            },
+            "last_state": {
+              "terminated": null
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

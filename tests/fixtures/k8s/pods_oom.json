@@ -1,0 +1,49 @@
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "memory-hog-5c7d9b8f6-mn9pq",
+        "namespace": "default",
+        "creation_timestamp": "2024-06-01T09:00:00Z",
+        "labels": {"app": "memory-hog"}
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "memory-hog",
+            "image": "myrepo/memory-hog:latest",
+            "resources": {
+              "limits": {"cpu": "500m", "memory": "256Mi"},
+              "requests": {"cpu": "100m", "memory": "128Mi"}
+            },
+            "env": []
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "conditions": [
+          {"type": "ContainersReady", "status": "True", "reason": null}
+        ],
+        "container_statuses": [
+          {
+            "name": "memory-hog",
+            "restart_count": 3,
+            "state": {
+              "running": {"started_at": "2024-06-01T09:45:00Z"},
+              "waiting": null,
+              "terminated": null
+            },
+            "last_state": {
+              "terminated": {
+                "reason": "OOMKilled",
+                "exit_code": 137,
+                "finished_at": "2024-06-01T09:44:00Z"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

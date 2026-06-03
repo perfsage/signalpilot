@@ -19,7 +19,7 @@ from signalpilot.models import (
 
 
 class EventsCollector(BaseCollector):
-    """Collects Kubernetes Warning events as Signals."""
+    """Collects Kubernetes events as Signals (Warning → HIGH, Normal → INFO)."""
 
     name = "events"
 
@@ -67,8 +67,7 @@ class EventsCollector(BaseCollector):
         signals: list[Signal] = []
         for event in event_list.items:
             event_type = getattr(event, "type", "Normal") or "Normal"
-            if event_type != "Warning":
-                continue
+            severity = Severity.HIGH if event_type == "Warning" else Severity.INFO
 
             # Resolve best available timestamp
             event_ts = (
@@ -95,7 +94,7 @@ class EventsCollector(BaseCollector):
                     ts=event_ts,
                     source=SignalSource.EVENTS,
                     kind=SignalKind.EVENT,
-                    severity=Severity.HIGH,
+                    severity=severity,
                     target=target,
                     message=f"{reason}: {message}",
                 )

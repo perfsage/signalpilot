@@ -53,6 +53,24 @@
       "first_timestamp": "2024-06-01T11:20:00Z",
       "last_timestamp": "2024-06-01T11:40:00Z",
       "event_time": null
+    },
+    {
+      "metadata": {
+        "name": "api-server.event-pulled-004",
+        "namespace": "default"
+      },
+      "involved_object": {
+        "kind": "Pod",
+        "name": "api-server-7d9d4b8b5c-ghi56",
+        "namespace": "default"
+      },
+      "reason": "Pulled",
+      "message": "Successfully pulled image \"api-server:latest\"",
+      "type": "Normal",
+      "count": 1,
+      "first_timestamp": "2024-06-01T11:25:00Z",
+      "last_timestamp": "2024-06-01T11:45:00Z",
+      "event_time": null
     }
   ]
 }

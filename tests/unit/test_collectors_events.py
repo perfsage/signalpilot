@@ -30,12 +30,12 @@ def _make_collector(fixture_name: str) -> tuple[EventsCollector, MagicMock]:
 
 
 class TestEventsCollector:
-    def test_three_warning_signals_emitted(self):
+    def test_four_signals_emitted(self):
         collector, _ = _make_collector("events_warnings.json")
-        # since_ts in the far past so all 3 events pass the time filter
+        # since_ts in the far past so all 4 events pass the time filter
         since = datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp()
         signals = collector.collect("default", since_ts=since)
-        assert len(signals) == 3
+        assert len(signals) == 4
 
     def test_all_signals_kind_event(self):
         collector, _ = _make_collector("events_warnings.json")
@@ -47,7 +47,8 @@ class TestEventsCollector:
         collector, _ = _make_collector("events_warnings.json")
         since = datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp()
         signals = collector.collect("default", since_ts=since)
-        assert all(s.severity == Severity.HIGH for s in signals)
+        warning_signals = [s for s in signals if s.message.split(": ")[0] in {"FailedScheduling", "BackOff", "Unhealthy"}]
+        assert all(s.severity == Severity.HIGH for s in warning_signals)
 
     def test_source_is_events(self):
         collector, _ = _make_collector("events_warnings.json")
@@ -59,7 +60,7 @@ class TestEventsCollector:
         collector, _ = _make_collector("events_warnings.json")
         since = datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp()
         signals = collector.collect("default", since_ts=since)
-        reasons = {"FailedScheduling", "BackOff", "Unhealthy"}
+        reasons = {"FailedScheduling", "BackOff", "Unhealthy", "Pulled"}
         for sig in signals:
             assert ": " in sig.message
             reason = sig.message.split(": ")[0]
@@ -94,6 +95,15 @@ class TestEventsCollector:
         collector.collect("default", deployment="api-server", since_ts=since)
         call_kwargs = mock_api.list_namespaced_event.call_args[1]
         assert call_kwargs.get("field_selector") == "involvedObject.name=api-server"
+
+    def test_normal_events_severity_info(self):
+        """Normal events must produce Severity.INFO signals (not be dropped)."""
+        collector, _ = _make_collector("events_warnings.json")
+        since = datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp()
+        signals = collector.collect("default", since_ts=since)
+        normal_signals = [s for s in signals if s.message.startswith("Pulled:")]
+        assert len(normal_signals) == 1
+        assert normal_signals[0].severity == Severity.INFO
 
     def test_is_available_returns_false_on_exception(self):
         collector = EventsCollector()

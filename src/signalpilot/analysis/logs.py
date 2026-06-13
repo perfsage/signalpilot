@@ -19,7 +19,6 @@ from drain3.template_miner_config import TemplateMinerConfig
 
 from signalpilot.models import LogCluster
 
-
 # ── Patterns ──────────────────────────────────────────────────────────────
 ERROR_PATTERN = re.compile(
     r"(?i)\b(error|exception|fatal|critical|panic|traceback|fail(ed)?)\b"
@@ -64,8 +63,8 @@ def cluster_logs(
     # Process before lines first, then after lines.
     miner = _make_drain()
 
-    before_lines = [l for l in before_logs.splitlines() if l.strip()]
-    after_lines = [l for l in after_logs.splitlines() if l.strip()]
+    before_lines = [ln for ln in before_logs.splitlines() if ln.strip()]
+    after_lines = [ln for ln in after_logs.splitlines() if ln.strip()]
 
     before_counts: dict[str, int] = defaultdict(int)
     for line in before_lines:
@@ -170,10 +169,10 @@ def error_rate(log_text: str) -> float:
     Return fraction of lines matching ERROR_PATTERN.
     Returns 0.0 for empty input.
     """
-    lines = [l for l in log_text.splitlines() if l.strip()]
+    lines = [ln for ln in log_text.splitlines() if ln.strip()]
     if not lines:
         return 0.0
-    error_lines = sum(1 for l in lines if ERROR_PATTERN.search(l))
+    error_lines = sum(1 for ln in lines if ERROR_PATTERN.search(ln))
     return error_lines / len(lines)
 
 

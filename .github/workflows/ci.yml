@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check src/ tests/
+
+      - name: Type check (mypy)
+        run: mypy src/signalpilot --ignore-missing-imports
+
+      - name: Unit tests
+        run: |
+          pytest tests/unit/ -v --tb=short --color=yes
+
+  report-smoke:
+    name: HTML report smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Generate test report
+        run: |
+          python - <<'EOF'
+          from signalpilot.models import (
+              Analysis, Finding, Signal, Target, Fix,
+              Severity, SignalSource, SignalKind, LogCluster,
+          )
+          from signalpilot.report.html import generate_html_report
+          from datetime import datetime, timezone
+          import uuid, sys
+
+          now = datetime.now(timezone.utc)
+          finding = Finding(
+              id=str(uuid.uuid4()),
+              title="CrashLoopBackOff — container repeatedly crashing",
+              severity=Severity.CRITICAL,
+              confidence=0.95,
+              blast_radius=0.4,
+              target=Target(kind="Pod", namespace="ci", name="app-abc-123", container="app"),
+              evidence=[
+                  Signal(
+                      ts=now, source=SignalSource.KUBE_API, kind=SignalKind.CRASH_LOOP,
+                      severity=Severity.CRITICAL,
+                      target=Target(kind="Pod", namespace="ci", name="app-abc-123", container="app"),
+                      value=5.0, message="Container app: CrashLoopBackOff (5 restarts)",
+                  ),
+                  LogCluster(
+                      fingerprint="abc", template="ERROR: connection refused to <*>",
+                      count_before=0, count_after=8, is_new=True,
+                  ),
+              ],
+              fixes=[Fix(
+                  description="Check container logs for startup errors",
+                  kind="info",
+                  kubectl_snippet="kubectl logs -n ci app-abc-123 -c app --previous",
+                  expected_improvement="Identify root cause error message",
+              )],
+              explanation="Container is crashing on startup — new error pattern detected post-deploy.",
+              rule_id="crash_loop",
+          )
+          analysis = Analysis(
+              id="ci-smoke-test",
+              ts=now,
+              namespace="ci",
+              deploy_change=None,
+              findings=[finding],
+              sources_used=[SignalSource.KUBE_API, SignalSource.LOGS],
+          )
+          html = generate_html_report(analysis)
+          assert "PerfSage" in html, "PerfSage branding missing"
+          assert "CrashLoopBackOff" in html, "Finding title missing"
+          assert "Crash Loop" in html, "Clean kind label missing"
+          assert "Kube API" in html, "Clean source label missing"
+          assert len(html) > 20_000, f"Report too small: {len(html)} bytes"
+          print(f"Report OK — {len(html):,} bytes")
+          EOF

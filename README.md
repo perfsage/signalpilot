@@ -54,12 +54,23 @@ SignalPilot runs a `observe → correlate → explain → recommend → verify �
 ## Quick start
 
 ```bash
-# Install
 git clone https://github.com/perfsage/signalpilot
 cd signalpilot
-pip install -e .
+bash install.sh          # creates .venv/, upgrades pip, installs SignalPilot
+```
 
-# Apply RBAC (read-only cluster access)
+> **`bash install.sh --dev`** also installs test/lint dependencies.
+> **`bash install.sh --no-venv`** installs into the currently active environment.
+
+The installer automatically: finds Python 3.12+, creates a virtual environment,
+upgrades pip to a version that supports `pyproject.toml` (≥ 21.3), and verifies
+the CLI works — with a clear error message and fix instruction if anything goes wrong.
+
+```bash
+# Activate the venv on subsequent sessions
+source .venv/bin/activate
+
+# Apply RBAC (one-time, read-only cluster access)
 kubectl apply -f deploy/signalpilot-rbac.yaml
 
 # Analyze a namespace
@@ -83,7 +94,7 @@ signalpilot watch my-namespace --output-dir ./reports/
 
 ## Prerequisites
 
-- Python 3.12+
+- Python 3.12+ (`brew install python@3.12` / `sudo apt install python3.12`)
 - `kubectl` configured with cluster access
 - RBAC: `kubectl apply -f deploy/signalpilot-rbac.yaml`
 - Optional: Prometheus (auto-detected at `prometheus-operated:9090` and common cluster URLs)
@@ -131,11 +142,14 @@ signalpilot analyze [namespace] [deployment]
 ## Development
 
 ```bash
-pip install -e ".[dev]"
-pytest tests/unit/       # 329 unit tests (no cluster needed)
-pytest tests/e2e/        # 5 E2E tests (requires kubectl + sample apps)
-bash scripts/setup_test.sh    # deploy test scenarios to signalpilot-test ns
-bash scripts/run_e2e.sh       # run E2E scenario script
+bash install.sh --dev            # creates .venv/ with dev dependencies
+source .venv/bin/activate
+
+pytest tests/unit/               # 340 unit tests (no cluster needed)
+pytest tests/e2e/                # E2E tests (requires kubectl + sample apps)
+bash scripts/reset_scenarios.sh  # deploy 16 test scenarios to signalpilot-test ns
+bash scripts/capture_all_evidence.sh  # generate HTML/JSON evidence for all 12 scenarios
+python scripts/audit_evidence.py      # verify evidence quality bar
 ```
 
 ## Installing Prometheus (optional, enriches findings)

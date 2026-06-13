@@ -1,6 +1,8 @@
 """Slack webhook integration for SignalPilot."""
 from __future__ import annotations
+
 import httpx
+
 from signalpilot.models import Analysis, Severity
 
 

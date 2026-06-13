@@ -4,13 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from signalpilot.collectors.kube_api import KubeApiCollector
-from signalpilot.models import SignalKind, Severity
-
+from signalpilot.models import Severity, SignalKind
 from tests.unit.conftest_k8s import make_pod_list
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "k8s"

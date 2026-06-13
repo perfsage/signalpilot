@@ -1,8 +1,8 @@
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
+from signalpilot.models import Analysis, Finding, Severity, Target
 from signalpilot.verification.store import VerificationStore
-from signalpilot.models import Analysis, Finding, Fix, Target, Severity
 
 T0 = datetime(2024, 6, 1, tzinfo=timezone.utc)
 

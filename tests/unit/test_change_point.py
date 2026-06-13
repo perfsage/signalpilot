@@ -1,7 +1,7 @@
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
 from signalpilot.detect.changes import detect_change_point
-from signalpilot.models import Signal, SignalSource, SignalKind, Severity, Target
+from signalpilot.models import Severity, Signal, SignalKind, SignalSource, Target
 
 T0 = datetime(2024, 6, 1, 12, 0, tzinfo=timezone.utc)
 

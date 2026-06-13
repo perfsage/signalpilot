@@ -8,23 +8,16 @@ import pytest
 
 from signalpilot.models import (
     CommitInfo,
-    DeployChange,
-    Fix,
     Finding,
+    Fix,
     GitChange,
-    ImageDiff,
     LogCluster,
-    RegressionWindow,
     Severity,
     Signal,
     SignalKind,
     SignalSource,
     Target,
-    TopologyEdge,
-    TopologyGraph,
-    TopologyNode,
 )
-
 
 NOW = datetime(2024, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
 

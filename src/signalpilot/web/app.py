@@ -87,8 +87,9 @@ button:hover{background:#1d4ed8}
     @web_app.get("/api/analyses/{analysis_id}")
     def get_analysis(analysis_id: str) -> JSONResponse:
         """Return the full Analysis JSON for analysis_id."""
-        from signalpilot.verification.store import VerificationStore
         from fastapi import HTTPException
+
+        from signalpilot.verification.store import VerificationStore
 
         store = VerificationStore()
         analysis = store.load(analysis_id)

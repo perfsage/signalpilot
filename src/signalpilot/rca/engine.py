@@ -8,13 +8,17 @@ Orchestrates:
 """
 from __future__ import annotations
 
-import uuid
 import time
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
 from signalpilot.models import (
-    Analysis, Signal, LogCluster, RegressionWindow, DeployChange,
+    Analysis,
+    DeployChange,
+    LogCluster,
+    RegressionWindow,
+    Signal,
 )
 from signalpilot.rca.rules import ALL_RULES, RcaContext
 from signalpilot.rca.scoring import rank_findings

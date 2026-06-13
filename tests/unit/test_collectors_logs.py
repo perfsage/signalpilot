@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
 from types import SimpleNamespace
-
-import pytest
+from unittest.mock import MagicMock
 
 from signalpilot.collectors.logs import LogsCollector, redact_secrets
-from signalpilot.models import SignalKind, SignalSource, Severity
-
+from signalpilot.models import Severity, SignalKind, SignalSource
 
 # ---------------------------------------------------------------------------
 # redact_secrets – direct function tests

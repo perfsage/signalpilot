@@ -1,7 +1,7 @@
-from pathlib import Path
 from datetime import datetime, timezone
+
 from signalpilot.integrations.gate import gate_check, generate_junit_xml, generate_markdown_summary
-from signalpilot.models import Analysis, Finding, Fix, Target, Severity
+from signalpilot.models import Analysis, Finding, Severity, Target
 
 T0 = datetime(2024, 6, 1, tzinfo=timezone.utc)
 

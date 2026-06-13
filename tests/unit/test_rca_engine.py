@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
+from signalpilot.models import LogCluster, Severity, Signal, SignalKind, SignalSource, Target
 from signalpilot.rca.engine import RcaEngine
-from signalpilot.models import Signal, SignalSource, SignalKind, Severity, Target, LogCluster
 
 T0 = datetime(2024, 6, 1, 12, 0, tzinfo=timezone.utc)
 

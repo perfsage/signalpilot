@@ -1,6 +1,9 @@
-import pytest
 from signalpilot.analysis.logs import (
-    cluster_logs, extract_stacktraces, error_rate, redact_log, _categorize
+    _categorize,
+    cluster_logs,
+    error_rate,
+    extract_stacktraces,
+    redact_log,
 )
 
 BEFORE_LOGS = """

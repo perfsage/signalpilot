@@ -2,8 +2,6 @@
 
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 from signalpilot.models import (
     Severity,
     Signal,

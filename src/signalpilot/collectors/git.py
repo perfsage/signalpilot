@@ -18,16 +18,14 @@ Data flow:
    SUSPECT_PATH_PATTERNS or has suspect commit messages
 """
 from __future__ import annotations
+
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 
-import git  # GitPython
-from git import Repo, InvalidGitRepositoryError, GitCommandError
+from git import GitCommandError, Repo
 
-from signalpilot.models import CommitInfo, GitChange, DeployChange
-
+from signalpilot.models import CommitInfo, DeployChange, GitChange
 
 # Annotations/labels to check for commit SHA (in priority order)
 GIT_SHA_LABELS = [

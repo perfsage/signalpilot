@@ -9,8 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from signalpilot.models import Analysis
 from signalpilot.config import get_settings
+from signalpilot.models import Analysis
 
 
 class VerificationStore:

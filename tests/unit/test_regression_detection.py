@@ -1,9 +1,7 @@
-import pytest
-from datetime import datetime, timezone, timedelta
-from signalpilot.detect.regression import (
-    detect_regressions, _iqr_filtered_values, compute_z_score
-)
-from signalpilot.models import Signal, SignalSource, SignalKind, Severity, Target
+from datetime import datetime, timedelta, timezone
+
+from signalpilot.detect.regression import _iqr_filtered_values, compute_z_score, detect_regressions
+from signalpilot.models import Severity, Signal, SignalKind, SignalSource, Target
 
 T0 = datetime(2024, 6, 1, 12, 0, tzinfo=timezone.utc)
 

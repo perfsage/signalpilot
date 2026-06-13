@@ -14,8 +14,7 @@ from signalpilot.collectors.metrics_server import (
     _parse_cpu,
     _parse_memory,
 )
-from signalpilot.models import SignalKind, SignalSource, Severity
-
+from signalpilot.models import Severity, SignalKind, SignalSource
 from tests.unit.conftest_k8s import make_pod_list
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "k8s"

@@ -1,12 +1,11 @@
-import os
-import pytest
 from pathlib import Path
+
+import pytest
+
 from signalpilot.collectors.git import (
-    resolve_commit_sha,
-    flag_suspect_commits,
-    build_git_change,
     diff_commits,
-    _commit_to_info,
+    flag_suspect_commits,
+    resolve_commit_sha,
 )
 from signalpilot.models import CommitInfo
 

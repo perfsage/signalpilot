@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Optional
 
 from kubernetes import client
@@ -10,7 +9,6 @@ from kubernetes.client.exceptions import ApiException
 
 from signalpilot.collectors.kube_api import _load_kube_config, _parse_ts
 from signalpilot.models import DeployChange, ImageDiff, ResourceDiff
-
 
 _SENSITIVE_ENV_PATTERNS = {"PASSWORD", "TOKEN", "SECRET", "API_KEY", "APIKEY"}
 

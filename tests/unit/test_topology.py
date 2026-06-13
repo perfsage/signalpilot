@@ -4,13 +4,12 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import networkx as nx
-import pytest
 
 from signalpilot.models import (
+    Severity,
     Signal,
     SignalKind,
     SignalSource,
-    Severity,
     Target,
     TopologyEdge,
     TopologyGraph,

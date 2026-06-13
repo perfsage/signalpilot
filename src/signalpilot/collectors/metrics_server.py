@@ -9,7 +9,7 @@ from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 
 from signalpilot.collectors.base import BaseCollector
-from signalpilot.collectors.kube_api import _load_kube_config, _parse_ts
+from signalpilot.collectors.kube_api import _load_kube_config
 from signalpilot.models import (
     Severity,
     Signal,

@@ -11,7 +11,6 @@ from signalpilot.models import (
     Analysis,
     CommitInfo,
     DeployChange,
-    Evidence,
     Finding,
     Fix,
     GitChange,

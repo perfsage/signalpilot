@@ -7,11 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from signalpilot.collectors.events import EventsCollector
-from signalpilot.models import SignalKind, SignalSource, Severity
-
+from signalpilot.models import Severity, SignalKind, SignalSource
 from tests.unit.conftest_k8s import make_event_list
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "k8s"
@@ -77,7 +74,6 @@ class TestEventsCollector:
     def test_default_1h_window_excludes_old_events(self):
         """Without since_ts, events older than 1 hour should be excluded."""
         from unittest.mock import patch
-        from datetime import timedelta
 
         now = datetime(2024, 6, 1, 14, 0, 0, tzinfo=timezone.utc)
         with patch("signalpilot.collectors.events.datetime") as mock_dt:

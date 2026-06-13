@@ -10,7 +10,7 @@ from typing import Optional
 import polars as pl
 
 from signalpilot.config import get_settings
-from signalpilot.models import Analysis, Severity, Signal, SignalKind, SignalSource, Target
+from signalpilot.models import Severity, Signal, SignalKind, SignalSource, Target
 
 SCHEMA = pl.Schema({
     "id": pl.String,

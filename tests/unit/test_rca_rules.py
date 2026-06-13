@@ -1,17 +1,34 @@
-import pytest
 from datetime import datetime, timezone
 
-from signalpilot.rca.rules import (
-    RcaContext, rule_oom_killed, rule_cpu_throttled, rule_crash_loop,
-    rule_image_pull_error, rule_probe_failure, rule_pending_unschedulable,
-    rule_code_regression, rule_network_latency,
-    rule_configmap_error, rule_init_container_fail,
-    _parse_mem, _format_mem, _parse_cpu,
-)
 from signalpilot.models import (
-    Signal, LogCluster, SignalSource, SignalKind, Severity, Target,
-    RegressionWindow, DeployChange, ImageDiff, ResourceDiff,
-    CommitInfo, GitChange,
+    CommitInfo,
+    DeployChange,
+    GitChange,
+    ImageDiff,
+    LogCluster,
+    RegressionWindow,
+    ResourceDiff,
+    Severity,
+    Signal,
+    SignalKind,
+    SignalSource,
+    Target,
+)
+from signalpilot.rca.rules import (
+    RcaContext,
+    _format_mem,
+    _parse_cpu,
+    _parse_mem,
+    rule_code_regression,
+    rule_configmap_error,
+    rule_cpu_throttled,
+    rule_crash_loop,
+    rule_image_pull_error,
+    rule_init_container_fail,
+    rule_network_latency,
+    rule_oom_killed,
+    rule_pending_unschedulable,
+    rule_probe_failure,
 )
 
 T0 = datetime(2024, 6, 1, 12, 0, tzinfo=timezone.utc)

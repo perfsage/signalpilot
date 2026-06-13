@@ -5,16 +5,16 @@ Generates a self-contained HTML file (no external CSS/JS dependencies)
 with PerfSage branding, finding cards, evidence drill-down, and copy-paste fixes.
 """
 from __future__ import annotations
-from pathlib import Path
+
 import base64
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from signalpilot.models import Analysis, Severity
-
 
 _SEVERITY_COLOR = {
     Severity.CRITICAL: "#DC2626",

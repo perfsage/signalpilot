@@ -13,14 +13,15 @@ Collects:
 - Pod restart rate
 """
 from __future__ import annotations
+
 from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
-from signalpilot.collectors.base import BaseCollector
-from signalpilot.models import Signal, SignalSource, SignalKind, Severity, Target
-from signalpilot.config import get_settings
 
+from signalpilot.collectors.base import BaseCollector
+from signalpilot.config import get_settings
+from signalpilot.models import Severity, Signal, SignalKind, SignalSource, Target
 
 COMMON_PROMETHEUS_URLS = [
     "http://prometheus-operated:9090",

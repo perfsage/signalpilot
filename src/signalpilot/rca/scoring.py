@@ -9,7 +9,6 @@ from __future__ import annotations
 from signalpilot.models import Finding, Severity
 from signalpilot.topology import TopologyBuilder
 
-
 SEVERITY_WEIGHT: dict[Severity, float] = {
     Severity.CRITICAL: 4.0,
     Severity.HIGH: 3.0,

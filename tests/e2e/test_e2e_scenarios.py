@@ -9,8 +9,8 @@ These tests require:
 Skip automatically if cluster is not available.
 """
 import pytest
-from kubernetes import config as kube_config, client
-from kubernetes.config.config_exception import ConfigException
+from kubernetes import client
+from kubernetes import config as kube_config
 
 
 def cluster_available() -> bool:
@@ -70,7 +70,7 @@ class TestE2EScenarios:
     def test_regression_scenario(self):
         """sp-test-regression v2 should produce code_regression finding."""
         analysis = self._analyze("sp-test-regression")
-        rule_ids = [f.rule_id for f in analysis.findings]
+        [f.rule_id for f in analysis.findings]
         # v2 returns 500s → new error log fingerprints → code_regression
         # May also detect restarts/probe failures
         assert len(analysis.findings) > 0, "Expected at least one finding for broken v2"

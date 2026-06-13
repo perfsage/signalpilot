@@ -4,20 +4,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from signalpilot.collectors.deploy import (
-    get_deploy_change,
-    _diff_images,
     _diff_env,
-    _diff_resources,
+    _diff_images,
     _mask_env_value,
+    get_deploy_change,
 )
 from signalpilot.models import DeployChange
-
 from tests.unit.conftest_k8s import make_rs_list, ns
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "k8s"

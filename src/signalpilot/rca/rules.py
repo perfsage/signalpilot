@@ -14,8 +14,15 @@ import uuid
 from typing import Optional
 
 from signalpilot.models import (
-    Finding, Fix, Signal, LogCluster, GitChange,
-    SignalKind, Severity, Target, DeployChange, RegressionWindow,
+    DeployChange,
+    Finding,
+    Fix,
+    LogCluster,
+    RegressionWindow,
+    Severity,
+    Signal,
+    SignalKind,
+    Target,
 )
 
 
@@ -525,7 +532,7 @@ def rule_latency_spike(ctx: RcaContext) -> list[Finding]:
 
     return [Finding(
         id=_finding_id(),
-        title=f"Latency spike — p95 regression detected in logs",
+        title="Latency spike — p95 regression detected in logs",
         severity=Severity.HIGH,
         confidence=confidence,
         blast_radius=0.0,

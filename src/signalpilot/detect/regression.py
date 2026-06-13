@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import Optional
 
 import numpy as np
+
 from signalpilot.config import get_settings
 from signalpilot.models import RegressionWindow, Signal, SignalKind
-
 
 _NUMERIC_KINDS: frozenset[SignalKind] = frozenset(
     {

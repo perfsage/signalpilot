@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from signalpilot.collectors.network import NetworkCollector
-from signalpilot.models import SignalKind, Severity
+from signalpilot.models import Severity, SignalKind
 
 
 class TestNetworkCollector:

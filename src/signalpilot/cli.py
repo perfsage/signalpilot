@@ -10,11 +10,10 @@ Commands:
 """
 from __future__ import annotations
 
-import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
 
 import typer
 from rich.console import Console
@@ -23,7 +22,7 @@ from rich.table import Table
 from rich.text import Text
 
 from signalpilot.config import get_settings
-from signalpilot.models import Severity, Analysis
+from signalpilot.models import Analysis, Severity
 
 app = typer.Typer(
     name="signalpilot",
@@ -42,15 +41,15 @@ def _run_analysis(
     quiet: bool,
 ) -> Analysis:
     """Core analysis pipeline. Returns Analysis object."""
-    from signalpilot.collectors.registry import CollectorRegistry
+    from signalpilot.analysis.logs import cluster_logs
     from signalpilot.collectors.deploy import get_deploy_change
     from signalpilot.collectors.logs import LogsCollector
-    from signalpilot.analysis.logs import cluster_logs
+    from signalpilot.collectors.registry import CollectorRegistry
     from signalpilot.detect.regression import detect_regressions
-    from signalpilot.topology import TopologyBuilder
-    from signalpilot.rca.engine import RcaEngine
     from signalpilot.narrate.llm import polish_narrative
+    from signalpilot.rca.engine import RcaEngine
     from signalpilot.report.html import generate_html_report
+    from signalpilot.topology import TopologyBuilder
 
     settings = get_settings()
 
@@ -234,7 +233,11 @@ def gate(
 
     analysis = _run_analysis(namespace, deployment, None, False, None, True)
 
-    from signalpilot.integrations.gate import gate_check, generate_junit_xml, generate_markdown_summary
+    from signalpilot.integrations.gate import (
+        gate_check,
+        generate_junit_xml,
+        generate_markdown_summary,
+    )
 
     if junit_xml:
         generate_junit_xml(analysis, junit_xml)
@@ -263,6 +266,7 @@ def serve(
 ) -> None:
     """Launch the web dashboard."""
     import uvicorn
+
     from signalpilot.web.app import create_app
 
     web_app = create_app()

@@ -81,7 +81,7 @@ class KubeApiCollector(BaseCollector):
         )
 
         signals: list[Signal] = []
-        now = datetime.now(timezone.utc)
+        datetime.now(timezone.utc)
 
         for pod in pod_list.items:
             pod_name = pod.metadata.name

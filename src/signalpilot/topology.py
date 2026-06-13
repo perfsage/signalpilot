@@ -6,12 +6,12 @@ blast-radius scoring and dependency analysis.
 
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import networkx as nx
 from kubernetes import client
 
-from signalpilot.models import TopologyGraph, TopologyNode, TopologyEdge, Signal
+from signalpilot.models import Signal, TopologyEdge, TopologyGraph, TopologyNode
 
 if TYPE_CHECKING:
     from signalpilot.config import Settings

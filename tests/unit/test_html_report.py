@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
+
+from signalpilot.models import Analysis, Finding, Fix, Severity, Target
 from signalpilot.report.html import generate_html_report
-from signalpilot.models import Analysis, Finding, Fix, Target, Severity
 
 T0 = datetime(2024, 6, 1, tzinfo=timezone.utc)
 
@@ -43,7 +44,7 @@ class TestHtmlReport:
 
     def test_writes_to_file(self, tmp_path):
         path = tmp_path / "report.html"
-        result = generate_html_report(make_analysis(), output_path=path)
+        generate_html_report(make_analysis(), output_path=path)
         assert path.exists()
         assert "SignalPilot" in path.read_text()
 
@@ -51,6 +52,7 @@ class TestHtmlReport:
 class TestPrometheusCollector:
     def test_is_available_false_when_no_prometheus(self):
         from unittest.mock import patch
+
         from signalpilot.collectors.prometheus import PrometheusCollector
         collector = PrometheusCollector()
         collector._settings.prometheus_url = None

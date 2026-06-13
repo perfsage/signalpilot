@@ -7,8 +7,8 @@ Produces a 3-5 paragraph plain-English summary that answers:
 3. What to do first (top finding + fix)
 """
 from __future__ import annotations
-from signalpilot.models import Analysis, Severity
 
+from signalpilot.models import Analysis, Severity
 
 _SEVERITY_ORDER = [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO]
 

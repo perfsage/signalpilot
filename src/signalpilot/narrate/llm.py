@@ -8,9 +8,10 @@ Always grounds the LLM in deterministic context — never lets it hallucinate
 K8s objects or recommendations not present in the Analysis.
 """
 from __future__ import annotations
+
+from signalpilot.config import get_settings
 from signalpilot.models import Analysis
 from signalpilot.narrate.template import generate_narrative
-from signalpilot.config import get_settings
 
 
 def polish_narrative(analysis: Analysis) -> str:

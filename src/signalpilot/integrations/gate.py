@@ -1,10 +1,10 @@
 """CI/CD gate integration for SignalPilot."""
 from __future__ import annotations
-import sys
+
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from signalpilot.models import Analysis, Severity
 
+from signalpilot.models import Analysis, Severity
 
 _SEVERITY_ORDER = [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO]
 

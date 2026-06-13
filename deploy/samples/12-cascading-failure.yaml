@@ -1,0 +1,130 @@
+---
+# Service A: the upstream that will be killed to trigger cascading failure
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sp-cascading-svc-a-script
+  namespace: signalpilot-test
+data:
+  app.py: |
+    import http.server
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"service-A OK")
+        def log_message(self, *args): pass
+
+    print("INFO service-A running on :8080", flush=True)
+    http.server.HTTPServer(("", 8080), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-cascading-svc-a
+  namespace: signalpilot-test
+  labels:
+    app: sp-cascading-svc-a
+    scenario: cascading-failure
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-cascading-svc-a
+  template:
+    metadata:
+      labels:
+        app: sp-cascading-svc-a
+        scenario: cascading-failure
+    spec:
+      volumes:
+      - name: script
+        configMap:
+          name: sp-cascading-svc-a-script
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "/scripts/app.py"]
+        volumeMounts:
+        - name: script
+          mountPath: /scripts
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "100m"
+            memory: "64Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sp-cascading-svc-a
+  namespace: signalpilot-test
+spec:
+  selector:
+    app: sp-cascading-svc-a
+  ports:
+  - port: 8080
+    targetPort: 8080
+---
+# Service B: depends on service-A; crashes when A is unreachable
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sp-cascading-svc-b-script
+  namespace: signalpilot-test
+data:
+  app.py: |
+    import http.client, time, sys
+
+    while True:
+        try:
+            conn = http.client.HTTPConnection("sp-cascading-svc-a", 8080, timeout=2)
+            conn.request("GET", "/")
+            resp = conn.getresponse()
+            print(f"INFO upstream OK: {resp.status}", flush=True)
+        except Exception as e:
+            print(f"ERROR upstream service-A unreachable: {e}", file=sys.stderr, flush=True)
+        time.sleep(3)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-cascading
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-cascading
+    scenario: cascading-failure
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-cascading
+  template:
+    metadata:
+      labels:
+        app: sp-test-cascading
+        scenario: cascading-failure
+    spec:
+      volumes:
+      - name: script
+        configMap:
+          name: sp-cascading-svc-b-script
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "/scripts/app.py"]
+        volumeMounts:
+        - name: script
+          mountPath: /scripts
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "100m"
+            memory: "64Mi"

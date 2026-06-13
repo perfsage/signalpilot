@@ -5,6 +5,7 @@ from signalpilot.rca.rules import (
     RcaContext, rule_oom_killed, rule_cpu_throttled, rule_crash_loop,
     rule_image_pull_error, rule_probe_failure, rule_pending_unschedulable,
     rule_code_regression, rule_network_latency,
+    rule_configmap_error, rule_init_container_fail,
     _parse_mem, _format_mem, _parse_cpu,
 )
 from signalpilot.models import (
@@ -329,3 +330,89 @@ class TestHelpers:
 
     def test_parse_cpu_fractional(self):
         assert _parse_cpu("1.5") == 1500.0
+
+
+class TestRuleConfigmapError:
+    def _event_sig(self, msg: str):
+        return Signal(
+            type="signal", ts=T0, source=SignalSource.EVENTS,
+            kind=SignalKind.EVENT, severity=Severity.CRITICAL,
+            target=Target(kind="Pod", namespace="ns", name="pod-abc"),
+            message=msg,
+        )
+
+    def test_fires_on_create_container_config_error(self):
+        ctx = make_ctx(signals=[self._event_sig("CreateContainerConfigError: configmap not found")])
+        findings = rule_configmap_error(ctx)
+        assert len(findings) == 1
+        assert findings[0].rule_id == "configmap_error"
+        assert findings[0].severity == Severity.CRITICAL
+
+    def test_fires_on_configmap_keyword(self):
+        ctx = make_ctx(signals=[self._event_sig("MountVolume failed: configmap 'sp-nonexistent' not found")])
+        findings = rule_configmap_error(ctx)
+        assert len(findings) == 1
+
+    def test_no_config_error_no_finding(self):
+        ctx = make_ctx(signals=[self._event_sig("Pulled image successfully")])
+        assert rule_configmap_error(ctx) == []
+
+    def test_has_kubectl_fix(self):
+        ctx = make_ctx(signals=[self._event_sig("CreateContainerConfigError")])
+        finding = rule_configmap_error(ctx)[0]
+        assert any("kubectl" in (f.kubectl_snippet or "") for f in finding.fixes)
+
+    def test_confidence_is_high(self):
+        ctx = make_ctx(signals=[self._event_sig("CreateContainerConfigError")])
+        finding = rule_configmap_error(ctx)[0]
+        assert finding.confidence >= 0.90
+
+
+class TestRuleInitContainerFail:
+    def _event_sig(self, msg: str):
+        return Signal(
+            type="signal", ts=T0, source=SignalSource.EVENTS,
+            kind=SignalKind.EVENT, severity=Severity.HIGH,
+            target=Target(kind="Pod", namespace="ns", name="pod-abc"),
+            message=msg,
+        )
+
+    def _crash_sig(self, msg: str):
+        return Signal(
+            type="signal", ts=T0, source=SignalSource.KUBE_API,
+            kind=SignalKind.CRASH_LOOP, severity=Severity.CRITICAL,
+            target=Target(kind="Pod", namespace="ns", name="pod-abc", container="init-checker"),
+            message=msg,
+        )
+
+    def test_fires_on_backoff_event(self):
+        ctx = make_ctx(signals=[self._event_sig("BackOff restarting init container")])
+        findings = rule_init_container_fail(ctx)
+        assert len(findings) == 1
+        assert findings[0].rule_id == "init_container_fail"
+
+    def test_fires_on_crash_sig_with_init(self):
+        ctx = make_ctx(signals=[self._crash_sig("init container init-checker crashed")])
+        findings = rule_init_container_fail(ctx)
+        assert len(findings) == 1
+
+    def test_no_init_signal_no_finding(self):
+        ctx = make_ctx(signals=[self._event_sig("Pulled image successfully")])
+        assert rule_init_container_fail(ctx) == []
+
+    def test_has_two_fixes(self):
+        ctx = make_ctx(signals=[self._event_sig("BackOff restarting init container init-checker")])
+        finding = rule_init_container_fail(ctx)[0]
+        assert len(finding.fixes) >= 2
+
+    def test_log_clusters_added_to_evidence(self):
+        cluster = LogCluster(
+            fingerprint="abc", template="ERROR init failed",
+            count_before=0, count_after=5, is_new=True,
+        )
+        ctx = make_ctx(
+            signals=[self._event_sig("BackOff restarting init container")],
+            log_clusters=[cluster],
+        )
+        finding = rule_init_container_fail(ctx)[0]
+        assert cluster in finding.evidence

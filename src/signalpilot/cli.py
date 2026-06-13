@@ -82,17 +82,20 @@ def _run_analysis(
     registry.register_defaults()
     signals = registry.collect_all(namespace, deployment)
 
-    # 3. Collect logs and cluster them
+    # 3. Collect logs for clustering (previous = before, current = after)
     log_collector = LogsCollector(settings)
-    before_logs = ""
-    after_logs = ""
+    _raw_logs: dict[str, str] = {}
     try:
-        raw_logs = log_collector.collect_raw(namespace, deployment)  # type: ignore[attr-defined]
-        before_logs = raw_logs.get("before", "")
-        after_logs = raw_logs.get("after", "")
+        _raw_logs = log_collector.collect_raw(namespace, deployment)
     except Exception:
         pass
-    log_clusters = cluster_logs(before_logs, after_logs) if (before_logs or after_logs) else []
+    before_logs = _raw_logs.get("previous", "")
+    after_logs = _raw_logs.get("current", "")
+    log_clusters = (
+        cluster_logs(before_logs, after_logs)
+        if (before_logs or after_logs)
+        else []
+    )
 
     # 4. Get deploy change
     deploy_change = None
@@ -166,6 +169,9 @@ def analyze(
     output: Optional[Path] = typer.Option(
         None, "--output", "-o", help="Write HTML report to this path"
     ),
+    json_out: Optional[Path] = typer.Option(
+        None, "--json-out", help="Write JSON analysis dump to this path"
+    ),
     deep_network: bool = typer.Option(
         False, "--deep-network", help="Enable packet-level network analysis"
     ),
@@ -177,6 +183,9 @@ def analyze(
     settings = get_settings()
 
     analysis = _run_analysis(namespace, deployment, git_repo, deep_network, output, quiet)
+
+    if json_out:
+        json_out.write_text(analysis.model_dump_json(indent=2))
 
     if not quiet:
         _print_analysis(analysis)

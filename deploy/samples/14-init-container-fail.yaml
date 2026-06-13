@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-init-fail
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-init-fail
+    scenario: init-container-fail
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-init-fail
+  template:
+    metadata:
+      labels:
+        app: sp-test-init-fail
+        scenario: init-container-fail
+    spec:
+      initContainers:
+      - name: init-checker
+        image: python:3.11-slim
+        command:
+        - python3
+        - -c
+        - |
+          import sys
+          print("ERROR init-checker: required dependency check failed: db not reachable", file=sys.stderr, flush=True)
+          sys.exit(1)
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "-c", "print('main container running')"]
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "50m"
+            memory: "64Mi"

@@ -40,6 +40,39 @@ globs:
 - `tests/unit/` — fast fixture-based unit tests
 - `tests/e2e/` — live cluster E2E tests
 - `tests/fixtures/k8s/` — recorded K8s API JSON responses
-- `deploy/samples/` — scenario manifests for `signalpilot-test` namespace
-- `scripts/` — setup_test.sh, run_e2e.sh
+- `deploy/samples/` — scenario manifests for `signalpilot-test` namespace (01–16)
+- `scripts/` — capture_all_evidence.sh, reset_scenarios.sh, audit_evidence.py
+- `evidence/` — HTML reports + JSON dumps (gitignored except README.md)
 - `.signalpilot/` — runtime data dir (analyses, timelines, verifications)
+
+## Evidence campaign (live testing)
+- 16 scenario manifests in `deploy/samples/` cover: crash, OOM, imagepull, probe, unschedulable, regression, DNS, slow-transaction, memory-leak, cascading, configmap-missing, init-container-fail, latency-prometheus, git-correlation
+- All manifests use ConfigMap-backed scripts (no inline commands) for reliability
+- `bash scripts/reset_scenarios.sh` — redeploy all; `bash scripts/capture_all_evidence.sh` — capture 12 evidence sets
+- `python3.12 scripts/audit_evidence.py` — verifies quality bar (conf ≥ 75%, ev ≥ 2, kubectl fix)
+
+## RCA rules (as of 2026-06-13)
+- 11 rules in `ALL_RULES`: oom_killed, cpu_throttled, crash_loop, image_pull_error, probe_failure, pending_unschedulable, code_regression, network_latency, configmap_error, init_container_fail, latency_spike
+- New rule pattern: signal → evidence list → Finding (always add ≥ 2 corroborating signals)
+- `rule_configmap_error`: fires on EVENT signals containing "CreateContainerConfigError"/"configmap"/"couldn't find key"
+- `rule_init_container_fail`: fires on CRASH_LOOP signals with "[init:fail]" marker (emitted by KubeApiCollector for failed init containers)
+- `rule_latency_spike`: fires on log clusters with is_new=True and slow/warn/p95 keywords
+
+## Log clustering
+- `is_new = cb == 0 and ca > 0` AND template matches ERROR_PATTERN OR latency keywords
+- Log decode: `api.read_namespaced_pod_log()` may return `bytes` or `b"..."` repr strings — always pass through `_decode_log()` in `logs.py`
+- Insecure fallback: if kubelet cert mismatch (x509), retry with `verify_ssl=False` — safe for local clusters
+
+## HTML Report Design (2026-06-13)
+- Template: `src/signalpilot/report/templates/report.html.j2` — self-contained, PerfSage branded
+- Generator: `src/signalpilot/report/html.py` — adds `source_label`, `kind_label`, `kind_icon`, `severity_css`, `pct` Jinja2 filters
+- Design: warm off-white bg `#F4F1ED`, deep navy header `#0D1F3C`, white cards, color-coded left borders per severity
+- Template sections: header+severity pills → alert banner (top finding) → 5 KPI cards → narrative → deploy change → finding cards (collapsible, two-column fixes|evidence)
+- Evidence rendering: type-discriminated (`signal`/`log_cluster`/`git_change`) — no raw Python enum values leak through
+- Logo: embedded as base64 data URI via `_logo_data_uri()` (looks in workspace `.cursor/projects/.../assets/`)
+- Regenerate reports: `python3.12 -c "from pathlib import Path; from signalpilot.models import Analysis; from signalpilot.report.html import generate_html_report; [generate_html_report(Analysis.model_validate_json(f.read_text()), f.parent/(f.stem.replace('_analysis','_report')+'.html')) for f in Path('evidence').glob('*_analysis.json')]"`
+
+## K8s compatibility (additions)
+- Init container failure: detected via `pod.status.init_container_statuses[*].state.waiting.reason == "CrashLoopBackOff"` or `last_state.terminated.exit_code != 0`; emitted as CRASH_LOOP with "[init:fail]" in message
+- Pending pods: also emit NODE_CONDITION signal with CPU/mem resource requests for evidence corroboration
+- Rancher Desktop kubelet cert fix: delete `/var/lib/rancher/k3s/agent/serving-kubelet.crt`, set `ADDITIONAL_ARGS="--node-ip=<internal-ip>"` in `/etc/conf.d/k3s`, restart k3s via `rc-service k3s restart`

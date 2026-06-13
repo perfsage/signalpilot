@@ -97,7 +97,10 @@ def cluster_logs(
         cb = before_counts.get(cid, 0)
         ca = after_counts.get(cid, 0)
         template = templates.get(cid, cid)
-        is_new = cb == 0 and ca > 0 and bool(ERROR_PATTERN.search(template))
+        _latency_kw = re.compile(r"(?i)\b(slow|latency|p95|p99|timeout|warn|warning)\b")
+        is_new = cb == 0 and ca > 0 and bool(
+            ERROR_PATTERN.search(template) or _latency_kw.search(template)
+        )
         clusters.append(
             LogCluster(
                 fingerprint=cid,

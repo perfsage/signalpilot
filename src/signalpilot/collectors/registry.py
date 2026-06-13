@@ -5,10 +5,13 @@ from __future__ import annotations
 from typing import Optional
 
 from signalpilot.collectors.base import BaseCollector
+from signalpilot.collectors.cadvisor import CAdvisorCollector
 from signalpilot.collectors.events import EventsCollector
 from signalpilot.collectors.kube_api import KubeApiCollector
 from signalpilot.collectors.logs import LogsCollector
 from signalpilot.collectors.metrics_server import MetricsServerCollector
+from signalpilot.collectors.network import NetworkCollector
+from signalpilot.collectors.prometheus import PrometheusCollector
 from signalpilot.models import Signal
 
 
@@ -27,15 +30,17 @@ class CollectorRegistry:
         """Instantiate all built-in collectors and register available ones.
 
         KubeApiCollector and EventsCollector are always included if the
-        Kubernetes API is reachable.  MetricsServerCollector and
-        LogsCollector are included when their respective sources are
-        available.
+        Kubernetes API is reachable. Optional collectors (MetricsServer,
+        Logs, Network, cAdvisor, Prometheus) are included when available.
         """
         candidates: list[BaseCollector] = [
             KubeApiCollector(self._settings),
             EventsCollector(self._settings),
             MetricsServerCollector(self._settings),
             LogsCollector(self._settings),
+            NetworkCollector(self._settings),
+            CAdvisorCollector(self._settings),
+            PrometheusCollector(self._settings),
         ]
         for collector in candidates:
             try:

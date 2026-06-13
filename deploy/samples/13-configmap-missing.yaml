@@ -1,0 +1,38 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sp-test-configmap-missing
+  namespace: signalpilot-test
+  labels:
+    app: sp-test-configmap-missing
+    scenario: configmap-missing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sp-test-configmap-missing
+  template:
+    metadata:
+      labels:
+        app: sp-test-configmap-missing
+        scenario: configmap-missing
+    spec:
+      volumes:
+      - name: config
+        configMap:
+          name: sp-nonexistent-config-99999
+      containers:
+      - name: app
+        image: python:3.11-slim
+        command: ["python3", "-c", "print('started')"]
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "50m"
+            memory: "64Mi"

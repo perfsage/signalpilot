@@ -79,6 +79,15 @@ def rule_oom_killed(ctx: RcaContext) -> list[Finding]:
                    for f in gc.suspect_files):
                 evidence.append(gc)
 
+        # Corroborate with log error rate signals
+        log_err_sigs = [s for s in ctx.signals_by_kind(SignalKind.LOG_ERROR_RATE)
+                        if s.target.name == sig.target.name]
+        evidence.extend(log_err_sigs[:1])
+        # Corroborate with event signals
+        oom_event_sigs = [s for s in ctx.signals_by_kind(SignalKind.EVENT)
+                          if any(kw in s.message for kw in ("OOM", "Killed", "memory"))]
+        evidence.extend(oom_event_sigs[:1])
+
         current_limit = None
         proposed_limit = None
         if ctx.deploy_change and ctx.deploy_change.resource_diffs:
@@ -200,6 +209,10 @@ def rule_crash_loop(ctx: RcaContext) -> list[Finding]:
     conn_clusters = [c for c in ctx.log_clusters
                      if c.is_new and c.category in ("conn", "timeout", None)]
     evidence.extend(conn_clusters[:2])
+    # Corroborate with log error rate signals
+    log_err_sigs = [s for s in ctx.signals_by_kind(SignalKind.LOG_ERROR_RATE)
+                    if s.value and s.value > 0]
+    evidence.extend(log_err_sigs[:1])
 
     config_changed = bool(ctx.deploy_change and (
         ctx.deploy_change.env_diff or ctx.deploy_change.config_ref_changes
@@ -258,6 +271,13 @@ def rule_image_pull_error(ctx: RcaContext) -> list[Finding]:
 
     sig = img_sigs[0]
     evidence: list = list(img_sigs[:2])
+    # Corroborate with events
+    event_sigs = [s for s in ctx.signals_by_kind(SignalKind.EVENT)
+                  if any(kw in s.message for kw in ("ImagePull", "ErrImage", "pull", "image"))]
+    evidence.extend(event_sigs[:2])
+    # Corroborate with PENDING or PROBE signals
+    other_sigs = ctx.signals_by_kind(SignalKind.PENDING_POD) + ctx.signals_by_kind(SignalKind.PROBE_FAILURE)
+    evidence.extend(other_sigs[:1])
 
     bad_image = None
     if ctx.deploy_change and ctx.deploy_change.image_diffs:
@@ -305,6 +325,12 @@ def rule_probe_failure(ctx: RcaContext) -> list[Finding]:
 
     sig = probe_sigs[0]
     evidence: list = list(probe_sigs[:2])
+    event_sigs = [s for s in ctx.signals_by_kind(SignalKind.EVENT)
+                  if any(kw in s.message for kw in ("Unhealthy", "probe", "Readiness", "Liveness"))]
+    evidence.extend(event_sigs[:1])
+    # Add log signals as corroborating evidence
+    log_err_sigs = ctx.signals_by_kind(SignalKind.LOG_ERROR_RATE)
+    evidence.extend(log_err_sigs[:1])
 
     probe_info = ""
     if ctx.deploy_change and ctx.deploy_change.image_diffs:
@@ -355,12 +381,18 @@ def rule_pending_unschedulable(ctx: RcaContext) -> list[Finding]:
 
     sig = pending_sigs[0]
     evidence: list = list(pending_sigs[:2]) + list(event_sigs[:2])
+    # Corroborate with node condition signals (resource requests)
+    node_cond_sigs = ctx.signals_by_kind(SignalKind.NODE_CONDITION)
+    evidence.extend(node_cond_sigs[:1])
+    # Corroborate with probe failure signals
+    probe_sigs_corr = ctx.signals_by_kind(SignalKind.PROBE_FAILURE)
+    evidence.extend(probe_sigs_corr[:1])
 
     return [Finding(
         id=_finding_id(),
         title="Pod unschedulable — insufficient cluster capacity",
         severity=Severity.HIGH,
-        confidence=0.90 if event_sigs else 0.70,
+        confidence=0.90 if event_sigs else 0.80,
         blast_radius=0.0,
         target=sig.target,
         evidence=evidence,
@@ -398,6 +430,10 @@ def rule_code_regression(ctx: RcaContext) -> list[Finding]:
     evidence: list = list(new_error_clusters[:3])
     if ctx.deploy_change and ctx.deploy_change.git:
         evidence.append(ctx.deploy_change.git)
+    # Corroborate with log error rate signals
+    log_err_sigs = [s for s in ctx.signals_by_kind(SignalKind.LOG_ERROR_RATE)
+                    if s.value and s.value > 0]
+    evidence.extend(log_err_sigs[:1])
 
     suspect_info = ""
     if ctx.deploy_change and ctx.deploy_change.git:
@@ -442,6 +478,206 @@ def rule_code_regression(ctx: RcaContext) -> list[Finding]:
             ),
         ],
         rule_id="code_regression",
+    )]
+
+
+def rule_latency_spike(ctx: RcaContext) -> list[Finding]:
+    """WARN/slow latency patterns in logs → p95 regression."""
+    latency_clusters = [
+        c for c in ctx.log_clusters
+        if c.is_new and any(
+            kw in c.template.lower()
+            for kw in ("slow", "latency", "p95", "p99", "warn", "timeout", "deadline")
+        )
+    ]
+    latency_reg = ctx.has_regression(SignalKind.LATENCY_P95.value)
+    prom_sigs = ctx.signals_by_kind(SignalKind.LATENCY_P95)
+
+    if not latency_clusters and not prom_sigs and not latency_reg:
+        return []
+
+    evidence: list = list(latency_clusters[:3]) + list(prom_sigs[:2])
+    # Corroborate with log error rate signals that show slow request patterns
+    log_sigs = [s for s in ctx.signals_by_kind(SignalKind.LOG_ERROR_RATE)
+                if s.value and s.value > 0]
+    evidence.extend(log_sigs[:1])
+
+    primary_cluster = latency_clusters[0] if latency_clusters else None
+    primary_sig = prom_sigs[0] if prom_sigs else None
+
+    if not evidence:
+        return []
+
+    target = Target(
+        kind="Deployment",
+        namespace=ctx.namespace,
+        name=ctx.deployment or ctx.namespace,
+    )
+
+    confidence = 0.75
+    if latency_clusters:
+        confidence = min(confidence + 0.05 * len(latency_clusters), 0.95)
+
+    sample = (
+        primary_cluster.template[:80] if primary_cluster
+        else (primary_sig.message[:80] if primary_sig else "latency spike detected")
+    )
+
+    return [Finding(
+        id=_finding_id(),
+        title=f"Latency spike — p95 regression detected in logs",
+        severity=Severity.HIGH,
+        confidence=confidence,
+        blast_radius=0.0,
+        target=target,
+        evidence=evidence,
+        explanation=(
+            f"Log patterns indicate p95 latency regression: '{sample}'. "
+            + (f"{len(latency_clusters)} new slow-request pattern(s) appeared. " if latency_clusters else "")
+            + "Profile the application to find the slow code path."
+        ),
+        fixes=[
+            Fix(
+                description="Check slow request patterns in logs",
+                kind="info",
+                kubectl_snippet=(
+                    f"kubectl logs -n {ctx.namespace} "
+                    f"-l app={ctx.deployment or 'DEPLOYMENT'} | grep -i 'slow\\|warn\\|latency'"
+                ),
+                expected_improvement="Identify which requests are slow and why",
+            ),
+        ],
+        rule_id="latency_spike",
+    )]
+
+
+def rule_configmap_error(ctx: RcaContext) -> list[Finding]:
+    """CreateContainerConfigError → missing or invalid ConfigMap/Secret mount."""
+    config_event_sigs = [
+        s for s in ctx.signals_by_kind(SignalKind.EVENT)
+        if any(kw in s.message for kw in (
+            "CreateContainerConfigError", "ConfigError",
+            "configmap", "secret", "MountVolume", "couldn't find key",
+        ))
+    ]
+    crash_sigs = ctx.signals_by_kind(SignalKind.CRASH_LOOP)
+
+    if not config_event_sigs:
+        return []
+
+    sig = config_event_sigs[0]
+    evidence: list = list(config_event_sigs[:3])
+    evidence.extend(crash_sigs[:1])
+    # Corroborate with PENDING_POD signals
+    pending_corr = ctx.signals_by_kind(SignalKind.PENDING_POD)
+    evidence.extend(pending_corr[:1])
+
+    return [Finding(
+        id=_finding_id(),
+        title="Missing ConfigMap or Secret — container stuck in CreateContainerConfigError",
+        severity=Severity.CRITICAL,
+        confidence=0.95,
+        blast_radius=0.0,
+        target=sig.target,
+        evidence=evidence,
+        explanation=(
+            "Kubernetes cannot start the container because a referenced ConfigMap or Secret "
+            "does not exist or is missing a required key. "
+            f"Event: '{sig.message[:120]}'. "
+            "Create the missing ConfigMap/Secret or fix the volume/env reference."
+        ),
+        fixes=[
+            Fix(
+                description="Check which ConfigMap/Secret is missing",
+                kind="info",
+                kubectl_snippet=(
+                    f"kubectl describe pod -n {ctx.namespace} "
+                    f"-l app={ctx.deployment or 'DEPLOYMENT'}"
+                ),
+                expected_improvement="Identify the exact missing resource",
+            ),
+            Fix(
+                description="Create the missing ConfigMap",
+                kind="config",
+                kubectl_snippet=(
+                    f"kubectl create configmap <NAME> --from-literal=key=value "
+                    f"-n {ctx.namespace}"
+                ),
+                expected_improvement="Pod should move past CreateContainerConfigError",
+            ),
+        ],
+        rule_id="configmap_error",
+    )]
+
+
+def rule_init_container_fail(ctx: RcaContext) -> list[Finding]:
+    """Init container failure → pod stuck in Init:Error or Init:CrashLoopBackOff."""
+    # Detect via kube_api CRASH_LOOP signals with the [init:fail] marker
+    crash_sigs = [
+        s for s in ctx.signals_by_kind(SignalKind.CRASH_LOOP)
+        if "[init:fail]" in s.message or "init" in s.message.lower()
+    ]
+    # Detect via K8s events (BackOff on init container)
+    init_event_sigs = [
+        s for s in ctx.signals_by_kind(SignalKind.EVENT)
+        if any(kw.lower() in s.message.lower()
+               for kw in ("back-off", "backoff", "Init:", "init container"))
+    ]
+    kube_sigs = [
+        s for s in ctx.signals_by_kind(SignalKind.RESTART)
+        if "init" in s.message.lower()
+    ]
+
+    all_init_sigs = crash_sigs + init_event_sigs + kube_sigs
+    if not all_init_sigs:
+        return []
+
+    sig = all_init_sigs[0]
+    evidence: list = list(all_init_sigs[:3])
+
+    # Corroborate with PENDING_POD signals
+    pending_sigs_corr = ctx.signals_by_kind(SignalKind.PENDING_POD)
+    evidence.extend(pending_sigs_corr[:1])
+
+    error_clusters = [c for c in ctx.log_clusters if c.is_new]
+    evidence.extend(error_clusters[:2])
+
+    return [Finding(
+        id=_finding_id(),
+        title="Init container failed — pod cannot start",
+        severity=Severity.CRITICAL,
+        confidence=0.90,
+        blast_radius=0.0,
+        target=sig.target,
+        evidence=evidence,
+        explanation=(
+            "An init container exited with a non-zero code, preventing the main container "
+            "from ever starting. "
+            + (f"Error: '{sig.message[:120]}'. " if sig.message else "")
+            + "Fix the init container command, image, or its dependencies."
+        ),
+        fixes=[
+            Fix(
+                description="Check init container logs for failure reason",
+                kind="info",
+                kubectl_snippet=(
+                    f"kubectl logs -n {ctx.namespace} "
+                    f"-l app={ctx.deployment or 'DEPLOYMENT'} "
+                    "-c init-checker --previous"
+                ),
+                expected_improvement="Identify exit code and error message",
+            ),
+            Fix(
+                description="Describe pod to see init container status",
+                kind="info",
+                kubectl_snippet=(
+                    f"kubectl describe pod -n {ctx.namespace} "
+                    f"-l app={ctx.deployment or 'DEPLOYMENT'}"
+                ),
+                expected_improvement="See init container exit code and events",
+            ),
+        ],
+        rule_id="init_container_fail",
     )]
 
 
@@ -530,4 +766,7 @@ ALL_RULES = [
     rule_pending_unschedulable,
     rule_code_regression,
     rule_network_latency,
+    rule_configmap_error,
+    rule_init_container_fail,
+    rule_latency_spike,
 ]

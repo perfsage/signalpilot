@@ -2,42 +2,42 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sp-dns-failure-script
+  name: sp-memory-leak-script
   namespace: signalpilot-test
 data:
   app.py: |
-    import socket, time, sys
+    import time, sys
 
+    leak = []
     while True:
-        try:
-            socket.gethostbyname('this-service-does-not-exist.signalpilot-test.svc.cluster.local')
-        except socket.gaierror as e:
-            print(f"ERROR DNS lookup failed: {e}", file=sys.stderr, flush=True)
-        time.sleep(2)
+        leak.append(b'x' * 10 * 1024 * 1024)  # 10 MB every 5s
+        used = sum(len(b) for b in leak)
+        print(f"INFO allocated {used // (1024 * 1024)}MB total", flush=True)
+        time.sleep(5)
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sp-test-dns
+  name: sp-test-memory-leak
   namespace: signalpilot-test
   labels:
-    app: sp-test-dns
-    scenario: dns-failure
+    app: sp-test-memory-leak
+    scenario: memory-leak
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: sp-test-dns
+      app: sp-test-memory-leak
   template:
     metadata:
       labels:
-        app: sp-test-dns
-        scenario: dns-failure
+        app: sp-test-memory-leak
+        scenario: memory-leak
     spec:
       volumes:
       - name: script
         configMap:
-          name: sp-dns-failure-script
+          name: sp-memory-leak-script
       containers:
       - name: app
         image: python:3.11-slim
@@ -47,8 +47,8 @@ spec:
           mountPath: /scripts
         resources:
           requests:
-            cpu: "10m"
             memory: "32Mi"
+            cpu: "10m"
           limits:
-            cpu: "50m"
             memory: "64Mi"
+            cpu: "100m"

@@ -101,6 +101,38 @@ class KubeApiCollector(BaseCollector):
                         message=f"Pod {pod_name} is in Pending state",
                     )
                 )
+                # Emit a second corroborating signal from pod resource requests
+                containers = getattr(pod.spec, "containers", []) or []
+                total_cpu_req = 0.0
+                total_mem_req = 0
+                for c in containers:
+                    res = getattr(c, "resources", None)
+                    reqs = getattr(res, "requests", None) if res else None
+                    if reqs:
+                        try:
+                            cpu_str = reqs.get("cpu", "0")
+                            total_cpu_req += _parse_cpu_req(cpu_str)
+                        except Exception:
+                            pass
+                        try:
+                            mem_str = reqs.get("memory", "0")
+                            total_mem_req += _parse_mem_req(mem_str)
+                        except Exception:
+                            pass
+                if total_cpu_req > 0 or total_mem_req > 0:
+                    signals.append(Signal(
+                        ts=pod_ts,
+                        source=SignalSource.KUBE_API,
+                        kind=SignalKind.NODE_CONDITION,
+                        severity=Severity.HIGH,
+                        target=target,
+                        value=total_cpu_req,
+                        message=(
+                            f"Pod {pod_name} requests "
+                            f"{total_cpu_req:.0f}m CPU, {total_mem_req // (1024**2):.0f}Mi memory — "
+                            "pod is unschedulable (no node has capacity)"
+                        ),
+                    ))
 
             # Probe failures from pod conditions
             conditions = (pod.status.conditions if pod.status else None) or []
@@ -218,4 +250,56 @@ class KubeApiCollector(BaseCollector):
                             )
                         )
 
+            # Init container status checks — emit CRASH_LOOP with "init" context
+            init_cs_list = (
+                getattr(pod.status, "init_container_statuses", None)
+                if pod.status else None
+            ) or []
+            for ics in init_cs_list:
+                ics_target = Target(
+                    kind="Pod",
+                    namespace=namespace,
+                    name=pod_name,
+                    container=ics.name,
+                )
+                ics_state = getattr(ics, "state", None)
+                ics_waiting = getattr(ics_state, "waiting", None) if ics_state else None
+                ics_waiting_reason = getattr(ics_waiting, "reason", "") if ics_waiting else ""
+                ics_last = getattr(ics, "last_state", None)
+                ics_last_term = getattr(ics_last, "terminated", None) if ics_last else None
+                ics_exit_code = getattr(ics_last_term, "exit_code", 0) if ics_last_term else 0
+
+                if ics_waiting_reason == "CrashLoopBackOff" or ics_exit_code != 0:
+                    signals.append(Signal(
+                        ts=pod_ts,
+                        source=SignalSource.KUBE_API,
+                        kind=SignalKind.CRASH_LOOP,
+                        severity=Severity.CRITICAL,
+                        target=ics_target,
+                        value=float(getattr(ics, "restart_count", 0) or 0),
+                        message=(
+                            f"Init container {ics.name} failed "
+                            f"(exit_code={ics_exit_code}, reason={ics_waiting_reason or 'Error'})"
+                            " [init:fail]"
+                        ),
+                    ))
+
         return signals
+
+
+def _parse_cpu_req(value: str) -> float:
+    """Parse Kubernetes CPU string to millicores (e.g. '500m' → 500.0, '1' → 1000.0)."""
+    value = value.strip()
+    if value.endswith("m"):
+        return float(value[:-1])
+    return float(value) * 1000
+
+
+def _parse_mem_req(value: str) -> int:
+    """Parse Kubernetes memory string to bytes (e.g. '128Mi' → 134217728)."""
+    value = value.strip()
+    units = {"Ki": 1024, "Mi": 1024 ** 2, "Gi": 1024 ** 3, "Ti": 1024 ** 4, "": 1}
+    for suffix, mult in sorted(units.items(), key=lambda x: -len(x[0])):
+        if suffix and value.endswith(suffix):
+            return int(value[: -len(suffix)]) * mult
+    return int(value) if value.isdigit() else 0

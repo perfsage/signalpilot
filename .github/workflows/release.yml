@@ -6,13 +6,9 @@ on:
       - "v*.*.*"
 
 jobs:
-  build-and-publish:
-    name: Build & publish to PyPI
+  build:
+    name: Build packages
     runs-on: ubuntu-latest
-    permissions:
-      contents: write      # for GitHub Release creation
-      id-token: write      # for trusted PyPI publishing
-
     steps:
       - uses: actions/checkout@v4
 
@@ -23,18 +19,60 @@ jobs:
           cache: pip
 
       - name: Install build tools
-        run: pip install build twine
+        run: pip install build
 
       - name: Build sdist and wheel
         run: python -m build
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        # Uses OIDC trusted publishing — no secrets needed.
-        # Configure at https://pypi.org/manage/account/publishing/
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+  github-release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: dist/*
+
+  pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+        # Configure trusted publisher at https://pypi.org/manage/project/perfsage-signalpilot/settings/publishing/
+        # Owner: perfsage · Repo: signalpilot · Workflow: release.yml · Environment: (any)
+
+      - name: PyPI setup hint on failure
+        if: failure()
+        run: |
+          echo "::warning::PyPI trusted publishing is not configured yet."
+          echo "See docs/PYPI_PUBLISHING.md — GitHub Release still ships from github-release job."

@@ -16,7 +16,17 @@
 
 ```bash
 pip install perfsage-signalpilot
+```
 
+If PyPI is not yet available in your region, install from the [v1.0.0 release](https://github.com/perfsage/signalpilot/releases/tag/v1.0.0):
+
+```bash
+pip install https://github.com/perfsage/signalpilot/releases/download/v1.0.0/perfsage_signalpilot-1.0.0-py3-none-any.whl
+```
+
+Then:
+
+```bash
 kubectl apply -f deploy/signalpilot-rbac.yaml
 
 signalpilot analyze my-namespace --deployment my-app --output report.html

@@ -1,44 +1,88 @@
-# ⚡ PerfSage SignalPilot
+# PerfSage SignalPilot
 
-> **Open-source Kubernetes RCA copilot** — answers *"why are errors and performance degradation happening after my last deployment?"* by correlating evidence across every signal source into ranked findings with concrete fixes.
+> **Deploy went fine. Errors didn't.**  
+> Open-source Kubernetes RCA that answers *"why did errors spike after my last deploy?"* in under five minutes — by correlating deploy diffs, events, metrics, logs, and git into ranked findings with copy-paste `kubectl` fixes.
 
+[![PyPI](https://img.shields.io/pypi/v/perfsage-signalpilot.svg)](https://pypi.org/project/perfsage-signalpilot/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 [![K8s 1.22+](https://img.shields.io/badge/k8s-1.22+-blue.svg)](https://kubernetes.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+**Landing page:** [perfsage.com/signalpilot](https://perfsage.com/signalpilot/) · **Sample report:** [examples/sample-report.html](examples/sample-report.html)
+
+---
+
+## Quick start
+
+```bash
+pip install perfsage-signalpilot
+
+kubectl apply -f deploy/signalpilot-rbac.yaml
+
+signalpilot analyze my-namespace --deployment my-app --output report.html
+```
+
+**CI gate** (exit 1 on HIGH+ findings):
+
+```bash
+signalpilot gate my-namespace --deployment my-app --junit-xml results.xml
+```
+
+From source:
+
+```bash
+git clone https://github.com/perfsage/signalpilot
+cd signalpilot && pip install -e .
+```
+
+---
+
+## Why SignalPilot?
+
+| | kubectl | Grafana / APM | SignalPilot |
+|---|---------|---------------|-------------|
+| **Deploy context** | One object at a time | Metrics without diff | Deploy diff fused into every finding |
+| **Cross-source evidence** | Manual tab-switching | Separate dashboards | Events + metrics + logs + git in one report |
+| **Actionable output** | Raw YAML/events | Charts | Ranked findings + copy-paste `kubectl` fixes |
+| **Post-deploy RCA time** | Hours (typical war room) | Still manual correlation | Under 5 minutes for typical regressions |
+| **Cluster agents** | N/A | Often required | Read-only RBAC only — no app pod agents |
+| **Cost** | Free | Enterprise tiers | MIT open source |
+
+Not another dashboard. **Analysis you can act on.** Core RCA uses deterministic rules — optional LLM polish only if you want it.
+
+---
+
 ## How it works
 
-SignalPilot runs a `observe → correlate → explain → recommend → verify → learn` loop:
+SignalPilot runs `observe → correlate → explain → recommend → verify → learn`:
 
-1. **Observe** — attaches to all available signal sources in parallel: K8s API (pods/events/deployments), metrics-server, container logs, cAdvisor/kubelet (CPU throttling, memory working-set), Prometheus (RED metrics, p95/p99, CFS throttle), network/DNS, and your app's git history.
+1. **Observe** — parallel collectors across K8s API, metrics-server, logs, cAdvisor, Prometheus, network, and optional git
+2. **Correlate** — deterministic rules fuse cross-source evidence (e.g. OOMKilled + memory at 94% of limit + git commit touching heap code → undersized memory limit)
+3. **Explain** — plain-English narrative per finding; optional LLM polish
+4. **Recommend** — ranked, copy-paste `kubectl` fixes
+5. **Verify** — baseline before fix, compare after next deploy: Fixed / Regressed / Unchanged
+6. **Learn** — revision-keyed history in `.signalpilot/`
 
-2. **Correlate** — a deterministic rule engine fuses cross-source evidence. Each finding cites *multiple* signal types (e.g., "OOMKilled + memory working-set at 94% of limit + git commit touching heap allocator = undersized memory limit, 97% confidence").
+---
 
-3. **Explain** — plain-English narrative + per-finding explanations. Optional LLM polish (OpenAI/Anthropic) grounds the narrative in the actual findings.
-
-4. **Recommend** — every finding comes with ranked, copy-paste `kubectl` fixes.
-
-5. **Verify** — save a baseline before a fix, compare after next deploy. "Fixed" vs "Regressed" vs "Unchanged" verdict.
-
-6. **Learn** — revision-keyed historical record in `.signalpilot/`.
-
-## Signal sources (what it attaches to)
+## Signal sources
 
 | Tier | Source | Always-on? |
 |------|--------|-----------|
-| 0 | Deploy diff (image/env/resources/probes/configmap) | ✅ |
-| 0 | Git repo correlation (commit SHA → changed files → suspect commits) | Optional (`--git-repo`) |
-| 1 | K8s API: restarts, OOMKilled, CrashLoopBackOff, ImagePullBackOff, probe failures, pending pods | ✅ |
-| 1 | K8s Events: FailedScheduling, BackOff, Unhealthy | ✅ |
-| 1 | metrics-server: CPU/memory usage vs limits (saturation) | ✅ |
-| 1 | Container logs: drain3 clustering, new-error detection, stacktrace extraction | ✅ |
-| 2 | kubelet/cAdvisor: CPU CFS throttling, memory working-set, disk pressure | ✅ |
-| 2 | Network: endpoint readiness, DNS failures | ✅ |
-| 3 | TCP packet analysis: retransmits, resets, RTT (on-demand tcpdump pod) | `--deep-network` |
-| 4 | Prometheus: p95/p99, error rate, CFS throttle ratio, historical baselines | Auto-detect |
+| 0 | Deploy diff (image/env/resources/probes/configmap) | Yes |
+| 0 | Git repo correlation (commit SHA → suspect commits) | Optional (`--git-repo`) |
+| 1 | K8s API: restarts, OOMKilled, CrashLoopBackOff, probes | Yes |
+| 1 | K8s Events: FailedScheduling, BackOff, Unhealthy | Yes |
+| 1 | metrics-server: CPU/memory saturation vs limits | Yes |
+| 1 | Container logs: drain3 clustering, new-error detection | Yes |
+| 2 | kubelet/cAdvisor: CPU throttling, memory working-set | Yes |
+| 2 | Network: endpoint readiness, DNS failures | Yes |
+| 4 | Prometheus: p95/p99, error rate, CFS throttle | Auto-detect |
 | 4 | Loki, OTel/Jaeger traces | Auto-detect |
 
-## RCA rules (what it finds)
+---
+
+## RCA rules
 
 | Rule | Trigger signals | Typical fix |
 |------|----------------|-------------|
@@ -48,125 +92,71 @@ SignalPilot runs a `observe → correlate → explain → recommend → verify �
 | `image_pull_error` | ImagePullBackOff / ErrImagePull | Fix image tag, rollback |
 | `probe_failure` | Readiness/liveness probe failing | Fix probe path/port/timing |
 | `pending_unschedulable` | Pending pod + FailedScheduling events | Reduce requests, add capacity |
-| `code_regression` | New log fingerprints after deploy ± git suspect commit | Rollback, investigate commit |
+| `code_regression` | New log fingerprints after deploy ± git suspect | Rollback, investigate commit |
 | `network_latency` | TCP retransmits + DNS failures | Investigate network policy, CoreDNS |
 
-## Quick start
+---
+
+## More commands
 
 ```bash
-git clone https://github.com/perfsage/signalpilot
-cd signalpilot
-bash install.sh          # creates .venv/, upgrades pip, installs SignalPilot
-```
-
-> **`bash install.sh --dev`** also installs test/lint dependencies.
-> **`bash install.sh --no-venv`** installs into the currently active environment.
-
-The installer automatically: finds Python 3.12+, creates a virtual environment,
-upgrades pip to a version that supports `pyproject.toml` (≥ 21.3), and verifies
-the CLI works — with a clear error message and fix instruction if anything goes wrong.
-
-```bash
-# Activate the venv on subsequent sessions
-source .venv/bin/activate
-
-# Apply RBAC (one-time, read-only cluster access)
-kubectl apply -f deploy/signalpilot-rbac.yaml
-
-# Analyze a namespace
-signalpilot analyze my-namespace
-
-# Analyze a specific deployment with HTML report
-signalpilot analyze my-namespace --deployment my-app --output report.html
-
-# With git correlation
+# Git correlation
 signalpilot analyze my-namespace --deployment my-app --git-repo https://github.com/org/app
 
-# CI/CD gate (exit 1 if HIGH+ findings)
-signalpilot gate my-namespace --deployment my-app --junit-xml results.xml
-
-# Start web dashboard
+# Web dashboard
 signalpilot serve
 
 # Watch for deploys (auto-analyze)
 signalpilot watch my-namespace --output-dir ./reports/
 ```
 
+---
+
 ## Prerequisites
 
-- Python 3.12+ (`brew install python@3.12` / `sudo apt install python3.12`)
+- Python 3.12+
 - `kubectl` configured with cluster access
 - RBAC: `kubectl apply -f deploy/signalpilot-rbac.yaml`
-- Optional: Prometheus (auto-detected at `prometheus-operated:9090` and common cluster URLs)
+- Optional: Prometheus (auto-detected at common cluster URLs)
+
+---
 
 ## Configuration
 
 All settings via env vars (`SIGNALPILOT_*`) or `.env` file:
 
 ```bash
-SIGNALPILOT_PROMETHEUS_URL=http://prometheus:9090  # explicit Prometheus URL
-SIGNALPILOT_LLM_PROVIDER=openai                    # "openai" or "anthropic"
-SIGNALPILOT_LLM_API_KEY=sk-...                     # LLM API key for narrative polish
+SIGNALPILOT_PROMETHEUS_URL=http://prometheus:9090
+SIGNALPILOT_LLM_PROVIDER=openai                    # optional
+SIGNALPILOT_LLM_API_KEY=sk-...                     # optional
 SIGNALPILOT_SLACK_WEBHOOK_URL=https://hooks.slack.com/...
-SIGNALPILOT_GATE_SEVERITY_THRESHOLD=high           # CI gate threshold
-SIGNALPILOT_BASELINE_WINDOW_S=1800                 # 30 min baseline before deploy
-SIGNALPILOT_DATA_DIR=.signalpilot                  # where to store analyses
+SIGNALPILOT_GATE_SEVERITY_THRESHOLD=high
+SIGNALPILOT_BASELINE_WINDOW_S=1800
+SIGNALPILOT_DATA_DIR=.signalpilot
 ```
 
-## Architecture
+---
 
-```
-signalpilot analyze [namespace] [deployment]
-           │
-    ┌──────▼──────┐
-    │  Collectors  │  K8s API · logs · metrics · cAdvisor · Prometheus · git
-    └──────┬──────┘
-    ┌──────▼──────┐
-    │  Timeline   │  Normalized Signal store (Parquet)
-    └──────┬──────┘
-    ┌──────▼───────────────┐
-    │  Analysis Layer       │
-    │  ├─ Regression detect │  IQR + z-score change detection
-    │  ├─ Log clustering    │  drain3 fingerprinting, new-error detection
-    │  ├─ Topology graph    │  networkx: Deployment→RS→Pod→Service
-    │  └─ Git correlation   │  commit SHA → file diff → suspect commits
-    └──────┬───────────────┘
-    ┌──────▼──────┐
-    │  RCA Engine  │  8 deterministic rules, cross-source evidence fusion
-    └──────┬──────┘
-    ┌──────▼──────┐
-    │  Output     │  CLI table · HTML report · Slack · JUnit XML · Web dashboard
-    └─────────────┘
-```
+## PerfSage product ladder
+
+1. **[PerfSage Reveal](https://perfsage.com/reveal/)** — JMeter JTL analysis in the lab
+2. **[SLO Reporter](https://perfsage.com/slo-plugin/)** — CI gates on load tests
+3. **SignalPilot** — post-deploy RCA in production (this repo)
+
+---
 
 ## Development
 
 ```bash
-bash install.sh --dev            # creates .venv/ with dev dependencies
+bash install.sh --dev
 source .venv/bin/activate
-
-pytest tests/unit/               # 340 unit tests (no cluster needed)
-pytest tests/e2e/                # E2E tests (requires kubectl + sample apps)
-bash scripts/reset_scenarios.sh  # deploy 16 test scenarios to signalpilot-test ns
-bash scripts/capture_all_evidence.sh  # generate HTML/JSON evidence for all 12 scenarios
-python scripts/audit_evidence.py      # verify evidence quality bar
+pytest tests/unit/
+pytest tests/e2e/                # requires kubectl + sample apps
+bash scripts/reset_scenarios.sh   # deploy 16 test scenarios
 ```
 
-## Installing Prometheus (optional, enriches findings)
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-  --namespace monitoring --create-namespace \
-  --version 45.31.1 \
-  --set alertmanager.enabled=false \
-  --set grafana.enabled=false \
-  --set prometheusOperator.admissionWebhooks.enabled=false \
-  --set prometheusOperator.tls.enabled=false \
-  --set kubeControllerManager.enabled=false \
-  --set kubeScheduler.enabled=false
-```
+---
 
 ## License
 
-MIT © PerfSage
+MIT © [PerfSage](https://perfsage.com)

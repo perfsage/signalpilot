@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SignalPilot RCA Report – signalpilot-test</title>
+<style>
+:root {
+  --bg: #0f172a; --surface: #1e293b; --border: #334155;
+  --text: #f1f5f9; --muted: #94a3b8;
+  --critical: #dc2626; --high: #ea580c; --medium: #d97706; --low: #16a34a; --info: #2563eb;
+  --code-bg: #0f172a; --code-text: #a5f3fc;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; line-height:1.6; }
+.header { background:linear-gradient(135deg,#1e3a5f,#0f172a); padding:2rem; border-bottom:1px solid var(--border); }
+.header h1 { font-size:1.8rem; font-weight:700; color:#38bdf8; }
+.header .meta { color:var(--muted); font-size:0.9rem; margin-top:0.5rem; }
+.container { max-width:1100px; margin:0 auto; padding:2rem; }
+.narrative { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem; margin-bottom:2rem; }
+.narrative p { margin-bottom:0.8rem; color:var(--text); }
+.findings-header { font-size:1.2rem; font-weight:600; margin-bottom:1rem; color:#38bdf8; }
+.finding-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:1.5rem; overflow:hidden; }
+.finding-header { display:flex; align-items:center; gap:1rem; padding:1rem 1.5rem; cursor:pointer; }
+.badge { padding:0.2rem 0.7rem; border-radius:999px; font-size:0.75rem; font-weight:700; text-transform:uppercase; }
+.badge-critical { background:#dc2626; color:white; }
+.badge-high { background:#ea580c; color:white; }
+.badge-medium { background:#d97706; color:white; }
+.badge-low { background:#16a34a; color:white; }
+.badge-info { background:#2563eb; color:white; }
+.finding-title { font-size:1rem; font-weight:600; flex:1; }
+.finding-meta { font-size:0.8rem; color:var(--muted); }
+.finding-body { padding:0 1.5rem 1.5rem; display:none; }
+.finding-body.open { display:block; }
+.explanation { color:var(--text); margin-bottom:1rem; line-height:1.7; }
+.fixes h4 { font-size:0.9rem; color:#38bdf8; margin-bottom:0.8rem; font-weight:600; }
+.fix { background:var(--code-bg); border:1px solid var(--border); border-radius:6px; padding:1rem; margin-bottom:0.8rem; }
+.fix .fix-desc { font-size:0.9rem; margin-bottom:0.5rem; color:var(--text); }
+.fix code { font-family:'Fira Mono','Cascadia Code',monospace; font-size:0.85rem; color:var(--code-text); display:block; white-space:pre-wrap; margin-top:0.5rem; }
+.copy-btn { font-size:0.7rem; color:var(--muted); background:none; border:1px solid var(--border); border-radius:4px; padding:0.2rem 0.5rem; cursor:pointer; float:right; margin-top:0.3rem; }
+.copy-btn:hover { color:var(--text); }
+.evidence h4 { font-size:0.9rem; color:#38bdf8; margin:1rem 0 0.5rem; font-weight:600; }
+.ev-item { background:#0a1628; border-radius:4px; padding:0.5rem 0.8rem; margin-bottom:0.4rem; font-size:0.8rem; color:var(--muted); font-family:monospace; }
+.summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:1rem; margin-bottom:2rem; }
+.summary-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1rem; text-align:center; }
+.summary-card .num { font-size:2rem; font-weight:700; }
+.summary-card .label { font-size:0.8rem; color:var(--muted); text-transform:uppercase; }
+.deploy-info { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem; margin-bottom:2rem; }
+.deploy-info h3 { font-size:1rem; color:#38bdf8; margin-bottom:1rem; }
+.diff-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.diff-table td, .diff-table th { padding:0.4rem 0.8rem; border-bottom:1px solid var(--border); text-align:left; }
+.diff-table th { color:var(--muted); font-weight:500; }
+.diff-old { color:#f87171; }
+.diff-new { color:#86efac; }
+.no-findings { text-align:center; padding:3rem; color:var(--muted); font-size:1.1rem; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>&#9889; SignalPilot RCA Report</h1>
+  <div class="meta">
+    Namespace: <strong>signalpilot-test</strong> |
+    Generated: 2026-06-03 18:43 UTC |
+    Analysis ID: a9739fde-c1b
+     | Duration: 0.0s
+  </div>
+</div>
+
+<div class="container">
+  <!-- Summary grid -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="num" style="color:#dc2626">1</div>
+      <div class="label">Critical</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#ea580c">2</div>
+      <div class="label">High</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#d97706">0</div>
+      <div class="label">Medium</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#38bdf8">3</div>
+      <div class="label">Total Findings</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#a78bfa">4</div>
+      <div class="label">Sources</div>
+    </div>
+  </div>
+
+  <!-- Narrative -->
+  
+  <div class="narrative">
+    
+    <p>Analysis of namespace 'signalpilot-test' completed at 2026-06-03 18:43 UTC.</p>
+    
+    <p>SignalPilot identified 3 finding(s): 1 critical, 2 high. Sources analyzed: kube_api, events, metrics_server, logs. Analysis completed in 0.0s.</p>
+    
+    <p>Top finding [CRITICAL] 'ImagePullBackOff — container image cannot be pulled' (confidence 98%): Kubernetes cannot pull the container image. Possible causes: wrong tag, registry auth failure, network issue, or image doesn't exist. Recommended first action: Verify the image tag exists in the registry. Run: `kubectl describe pod -n signalpilot-test -l app=sp-test-imagepull`</p>
+    
+  </div>
+  
+
+  <!-- Deploy change -->
+  
+
+  <!-- Findings -->
+  <div class="findings-header">&#128269; Findings (3)</div>
+
+  
+  
+  <div class="finding-card">
+    <div class="finding-header" onclick="toggle(this)">
+      <span class="badge badge-critical">critical</span>
+      <span class="finding-title">ImagePullBackOff — container image cannot be pulled</span>
+      <span class="finding-meta">
+        conf 98% |
+        blast 8% |
+        Pod/sp-test-imagepull-84d9d58795-zpfvt
+        /app
+      </span>
+    </div>
+    <div class="finding-body open">
+      <div class="explanation">Kubernetes cannot pull the container image. Possible causes: wrong tag, registry auth failure, network issue, or image doesn't exist.</div>
+
+      
+      <div class="fixes">
+        <h4>&#128295; Recommended Fixes</h4>
+        
+        <div class="fix">
+          <div class="fix-desc"><strong>1.</strong> Verify the image tag exists in the registry
+            
+          </div>
+          
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <code>kubectl describe pod -n signalpilot-test -l app=sp-test-imagepull</code>
+          
+          
+        </div>
+        
+        <div class="fix">
+          <div class="fix-desc"><strong>2.</strong> Roll back to previous image
+            
+          </div>
+          
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <code>kubectl rollout undo deployment/sp-test-imagepull</code>
+          
+          
+        </div>
+        
+      </div>
+      
+
+      
+      <div class="evidence">
+        <h4>&#128202; Evidence (1 source(s))</h4>
+        
+        <div class="ev-item">
+          
+            [SignalSource.KUBE_API] SignalKind.IMAGE_PULL_ERROR | sp-test-imagepull-84d9d58795-zpfvt/app | Container app: ImagePullBackOff
+          
+        </div>
+        
+      </div>
+      
+    </div>
+  </div>
+  
+  <div class="finding-card">
+    <div class="finding-header" onclick="toggle(this)">
+      <span class="badge badge-high">high</span>
+      <span class="finding-title">Readiness/liveness probe failing — service endpoints not ready</span>
+      <span class="finding-meta">
+        conf 80% |
+        blast 8% |
+        Pod/sp-test-imagepull-84d9d58795-zpfvt
+        
+      </span>
+    </div>
+    <div class="finding-body">
+      <div class="explanation">Pod sp-test-imagepull-84d9d58795-zpfvt probe is failing, causing it to be removed from Service endpoints. Check probe path, port, timing parameters, and whether the application is actually healthy.</div>
+
+      
+      <div class="fixes">
+        <h4>&#128295; Recommended Fixes</h4>
+        
+        <div class="fix">
+          <div class="fix-desc"><strong>1.</strong> Inspect probe configuration
+            
+          </div>
+          
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <code>kubectl describe pod sp-test-imagepull-84d9d58795-zpfvt -n signalpilot-test</code>
+          
+          
+        </div>
+        
+        <div class="fix">
+          <div class="fix-desc"><strong>2.</strong> Increase probe initialDelaySeconds if app needs more startup time
+            
+          </div>
+          
+          
+          <code>livenessProbe:
+  initialDelaySeconds: 60  # increase from current value
+  periodSeconds: 10
+  failureThreshold: 3</code>
+          
+        </div>
+        
+      </div>
+      
+
+      
+      <div class="evidence">
+        <h4>&#128202; Evidence (1 source(s))</h4>
+        
+        <div class="ev-item">
+          
+            [SignalSource.KUBE_API] SignalKind.PROBE_FAILURE | sp-test-imagepull-84d9d58795-zpfvt | ContainersReady=False reason=ContainersNotReady
+          
+        </div>
+        
+      </div>
+      
+    </div>
+  </div>
+  
+  <div class="finding-card">
+    <div class="finding-header" onclick="toggle(this)">
+      <span class="badge badge-high">high</span>
+      <span class="finding-title">Pod unschedulable — insufficient cluster capacity</span>
+      <span class="finding-meta">
+        conf 70% |
+        blast 8% |
+        Pod/sp-test-imagepull-84d9d58795-zpfvt
+        
+      </span>
+    </div>
+    <div class="finding-body">
+      <div class="explanation">Pod sp-test-imagepull-84d9d58795-zpfvt is stuck in Pending state. The cluster may not have sufficient CPU/memory to schedule this pod.</div>
+
+      
+      <div class="fixes">
+        <h4>&#128295; Recommended Fixes</h4>
+        
+        <div class="fix">
+          <div class="fix-desc"><strong>1.</strong> Check node capacity and pod resource requests
+            
+          </div>
+          
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <code>kubectl describe nodes | grep -A5 'Allocated resources'</code>
+          
+          
+        </div>
+        
+        <div class="fix">
+          <div class="fix-desc"><strong>2.</strong> Reduce CPU/memory requests if over-requested
+            
+          </div>
+          
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <code>kubectl set resources deployment/sp-test-imagepull --requests=cpu=100m,memory=128Mi</code>
+          
+          
+        </div>
+        
+      </div>
+      
+
+      
+      <div class="evidence">
+        <h4>&#128202; Evidence (1 source(s))</h4>
+        
+        <div class="ev-item">
+          
+            [SignalSource.KUBE_API] SignalKind.PENDING_POD | sp-test-imagepull-84d9d58795-zpfvt | Pod sp-test-imagepull-84d9d58795-zpfvt is in Pending state
+          
+        </div>
+        
+      </div>
+      
+    </div>
+  </div>
+  
+  
+</div>
+
+<script>
+function toggle(header) {
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+function copyCode(btn) {
+  const code = btn.nextElementSibling || btn.parentElement.querySelector('code');
+  if (code) navigator.clipboard.writeText(code.textContent).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 2000);
+  });
+}
+</script>
+</body>
+</html>
